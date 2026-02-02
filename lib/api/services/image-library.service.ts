@@ -138,7 +138,25 @@ export const imageLibraryService = {
   },
 
   /**
-   * Customer: list images
+   * Customer: list folders that have browse-visible (ready) images (requires use_image_library)
+   */
+  async browseFolders(): Promise<ApiResponse<ImageFolder[]>> {
+    return apiClient.get('/v1/customer/image-library/browse/folders')
+  },
+
+  /**
+   * Customer: browse shared images (read-only; requires use_image_library)
+   */
+  async browseImages(params?: ImageListParams): Promise<ApiResponse<Image[]>> {
+    return apiClient.get('/v1/customer/image-library/browse', { params })
+  },
+
+  async getBrowseImage(id: number): Promise<ApiResponse<Image>> {
+    return apiClient.get(`/v1/customer/image-library/browse/${id}`)
+  },
+
+  /**
+   * Customer: list images (own; requires view_image)
    */
   async listImages(params?: ImageListParams): Promise<ApiResponse<Image[]>> {
     return apiClient.get('/v1/customer/image-library/images', { params })

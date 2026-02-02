@@ -59,17 +59,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }>({ data: null, timestamp: 0 })
   const AUTH_FEATURES_TTL = 5 * 60 * 1000 // 5 minutes
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage, then refresh from API so permissions stay current
   React.useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check if user and token are stored in localStorage
         const storedUser = localStorage.getItem("user")
         const storedToken = localStorage.getItem("token")
-        
+
         if (storedUser && storedToken) {
           const parsedUser = JSON.parse(storedUser)
           setUser(parsedUser)
+          // Refresh user from profile API so permissions (e.g. use_audio_library) are up to date
+          // without requiring re-login after an admin assigns new permissions
+          const { profileService } = await import('@/lib/api')
+          const response = await profileService.getProfile()
+          if (response.success && response.data) {
+            const frontendUser = mapBackendUserToFrontend(response.data as LoginResponse['user'])
+            localStorage.setItem("user", JSON.stringify(frontendUser))
+            setUser(frontendUser)
+          }
         }
       } catch (error) {
         // Clear invalid data
@@ -310,6 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(frontendUser)
       }
     } catch (error) {
+      console.error("Failed to refresh user:", error)
     }
   }
 
@@ -318,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Call logout API
       await authService.logout()
     } catch (error) {
-      // Continue with logout even if API call fails
+      console.error("Logout API call failed (continuing with local logout):", error)
     } finally {
       // Clear local state regardless of API call result
       setUser(null)

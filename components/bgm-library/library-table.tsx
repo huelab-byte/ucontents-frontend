@@ -30,9 +30,9 @@ interface LibraryTableProps {
   totalPages: number
   onPageChange: (page: number) => void
   onView: (id: number) => void
-  onEdit: (library: Library) => void
-  onDelete: (library: Library) => void
-  onCreate: (library: Pick<Library, "name" | "parent_id">) => Promise<boolean> | boolean
+  onEdit?: (library: Library) => void
+  onDelete?: (library: Library) => void
+  onCreate?: (library: Pick<Library, "name" | "parent_id">) => Promise<boolean> | boolean
 }
 
 export function LibraryTable({
@@ -102,11 +102,14 @@ export function LibraryTable({
     return null
   }
 
+  const canCreate = typeof onCreate === "function"
+  const canEditOrDelete = typeof onEdit === "function" || typeof onDelete === "function"
+
   return (
     <Card className="mr-0 sm:mr-[26px] pl-[18px] pr-[18px]">
       <CardHeader className="pl-0 pr-0 flex flex-row items-center justify-between">
         <CardTitle>Folders</CardTitle>
-        <NewLibraryDialog onCreate={onCreate} />
+        {canCreate && <NewLibraryDialog onCreate={onCreate!} />}
       </CardHeader>
       <CardContent className="pl-0 pr-0">
         <div className="overflow-x-auto">
@@ -118,9 +121,11 @@ export function LibraryTable({
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Total BGM</th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Last Updated</th>
-                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3 w-12">
-                  Actions
-                </th>
+                {canEditOrDelete && (
+                  <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3 w-12">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -153,30 +158,36 @@ export function LibraryTable({
                         <span>{formatDate(library.updated_at)}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                          <HugeiconsIcon
-                            icon={MoreVerticalCircle01Icon}
-                            className="size-4"
-                          />
-                          <span className="sr-only">Options</span>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEdit(library)}>
-                            <HugeiconsIcon icon={EditIcon} className="size-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onDelete(library)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <HugeiconsIcon icon={DeleteIcon} className="size-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+                    {canEditOrDelete && (
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                            <HugeiconsIcon
+                              icon={MoreVerticalCircle01Icon}
+                              className="size-4"
+                            />
+                            <span className="sr-only">Options</span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {onEdit && (
+                              <DropdownMenuItem onClick={() => onEdit(library)}>
+                                <HugeiconsIcon icon={EditIcon} className="size-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {onDelete && (
+                              <DropdownMenuItem
+                                onClick={() => onDelete(library)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <HugeiconsIcon icon={DeleteIcon} className="size-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    )}
                   </tr>
                 )
               })}

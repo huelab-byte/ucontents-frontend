@@ -45,13 +45,15 @@ function FieldGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-const fieldVariants = cva("data-[invalid=true]:text-destructive gap-2 group/field flex w-full h-fit flex-wrap", {
+const fieldVariants = cva("data-[invalid=true]:text-destructive gap-2 group/field flex w-full h-fit flex-wrap pt-2.5 pb-2.5", {
   variants: {
     orientation: {
       vertical:
         "flex-col [&>*]:w-full [&>.sr-only]:w-auto",
       horizontal:
         "flex-row items-center flex-wrap [&>[data-slot=field-label]]:flex-auto has-[>[data-slot=field-content]]:items-start has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px",
+      verticalEnd:
+        "flex-col flex-nowrap justify-start items-end [&>*]:w-full [&>.sr-only]:w-auto",
       responsive:
         "flex-col [&>*]:w-full [&>.sr-only]:w-auto @md/field-group:flex-row @md/field-group:items-center @md/field-group:flex-wrap @md/field-group:[&>*]:w-auto @md/field-group:[&>[data-slot=field-label]]:flex-auto @md/field-group:has-[>[data-slot=field-content]]:items-start @md/field-group:has-[>[data-slot=field-content]]:[&>[role=checkbox],[role=radio]]:mt-px",
     },
@@ -82,7 +84,8 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="field-content"
       className={cn(
-        "gap-0.5 group/field-content flex flex-1 flex-col leading-snug",
+        "gap-0.5 group/field-content flex flex-1 flex-col leading-snug justify-start items-stretch w-full min-w-0",
+        "group-data-[data-orientation=verticalEnd]/field:justify-start group-data-[data-orientation=verticalEnd]/field:items-end",
         className
       )}
       {...props}
@@ -100,6 +103,7 @@ function FieldLabel({
       className={cn(
         "has-data-checked:bg-primary/5 has-data-checked:border-primary dark:has-data-checked:bg-primary/10 gap-2 group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border [&>*]:data-[slot=field]:p-2.5 group/field-label peer/field-label flex w-full leading-snug text-xs text-[#616161]",
         "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
+        "group-data-[data-orientation=verticalEnd]/field:justify-start group-data-[data-orientation=verticalEnd]/field:items-end group-data-[data-orientation=verticalEnd]/field:text-right group-data-[data-orientation=verticalEnd]/field:flex-col",
         className
       )}
       {...props}

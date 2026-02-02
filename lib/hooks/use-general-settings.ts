@@ -62,6 +62,7 @@ export function useGeneralSettings() {
           },
           social_links: {},
           maintenance_mode: false,
+          timezone: 'UTC',
         }
         cachedSettings = defaults
         setSettings(defaults)

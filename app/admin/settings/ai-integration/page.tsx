@@ -158,6 +158,7 @@ export default function AiIntegrationPage() {
         setStatistics(response.data)
       }
     } catch (error) {
+      console.error("Failed to load AI usage statistics:", error)
     }
   }
 

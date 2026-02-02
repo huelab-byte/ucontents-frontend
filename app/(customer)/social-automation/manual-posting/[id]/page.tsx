@@ -46,7 +46,16 @@ import {
   demoManualPosting,
   contentSources,
 } from "@/components/manual-posting"
+import type { AutoPostingInterval } from "@/components/manual-posting/manual-posting-form"
 import { ScheduledContentSection } from "@/components/manual-posting/detail/scheduled-content-section"
+
+const SCHEDULE_CONDITION_OPTIONS: { value: AutoPostingInterval; label: string }[] = [
+  { value: "minute", label: "Minute" },
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+]
 
 
 export default function ManualPostingDetailsPage() {
@@ -70,8 +79,11 @@ export default function ManualPostingDetailsPage() {
   const [selectedTime, setSelectedTime] = React.useState<string>("")
   const [timezone, setTimezone] = React.useState<string>("")
   const [schedulerEnabled, setSchedulerEnabled] = React.useState(false)
+  const [postScheduleCount, setPostScheduleCount] = React.useState(1)
+  const [postScheduleCondition, setPostScheduleCondition] = React.useState<AutoPostingInterval>("")
   const [dailyRepublishEnabled, setDailyRepublishEnabled] = React.useState(false)
-  const [dailyRepublish, setDailyRepublish] = React.useState(1)
+  const [dailyRepublish, setDailyRepublish] = React.useState(0)
+  const [dailyRepublishInterval, setDailyRepublishInterval] = React.useState<AutoPostingInterval>("")
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null)
   const [filePreview, setFilePreview] = React.useState<string | null>(null)
   const [videoOrientation, setVideoOrientation] = React.useState<"9:16" | "16:9" | null>(null)
@@ -505,7 +517,7 @@ export default function ManualPostingDetailsPage() {
           </Card>
         </div>
 
-        {/* Connected Platforms & Content Sources - Inline */}
+        {/* Connected Platforms & Media Sources - Inline */}
         <div className="flex items-center gap-8 flex-wrap text-sm">
           {/* Connected Platforms */}
           <div className="flex items-center gap-3">
@@ -513,9 +525,9 @@ export default function ManualPostingDetailsPage() {
             <PlatformIcons platforms={campaign.connectedTo} />
           </div>
 
-          {/* Content Sources */}
+          {/* Media Sources */}
           <div className="flex items-center gap-3">
-            <span className="text-muted-foreground font-medium">Content Sources:</span>
+            <span className="text-muted-foreground font-medium">Media Sources:</span>
             <div className="flex flex-wrap gap-2">
               {campaign.contentSource.map((source, index) => (
                 <Badge key={index} variant="secondary" className="text-sm">
@@ -952,37 +964,119 @@ export default function ManualPostingDetailsPage() {
                           </FieldContent>
                         </Field>
                       )}
-                      <Field orientation="vertical">
-                        <FieldLabel>
-                          <Label className="text-xs">Daily Republish</Label>
-                        </FieldLabel>
-                        <FieldContent>
-                          <div className="flex items-center gap-3 w-full">
-                            <Label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={dailyRepublishEnabled}
-                                onChange={(e) => setDailyRepublishEnabled(e.target.checked)}
-                                className="rounded border-border"
+                      {/* Post Schedule */}
+                      <div className="space-y-4">
+                        <div className="text-xs font-medium">Post Schedule</div>
+                        <div className="flex flex-nowrap items-center gap-4">
+                          <Field orientation="horizontal">
+                            <FieldLabel>
+                              <Label className="text-xs">Condition</Label>
+                            </FieldLabel>
+                            <FieldContent>
+                              <Select
+                                value={postScheduleCondition}
+                                onValueChange={(value) => setPostScheduleCondition(value as AutoPostingInterval)}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select Option">
+                                    {postScheduleCondition
+                                      ? SCHEDULE_CONDITION_OPTIONS.find((opt) => opt.value === postScheduleCondition)?.label
+                                      : null}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SCHEDULE_CONDITION_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FieldContent>
+                          </Field>
+                          <Field orientation="horizontal">
+                            <FieldLabel>
+                              <Label className="text-xs">Interval</Label>
+                            </FieldLabel>
+                            <FieldContent>
+                              <Input
+                                type="number"
+                                value={postScheduleCount}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value) || 1
+                                  setPostScheduleCount(Math.max(1, value))
+                                }}
+                                min={1}
+                                className="w-full"
+                                placeholder="0"
                               />
-                              <span className="text-sm">Enable daily republish</span>
-                            </Label>
-                            {dailyRepublishEnabled && (
+                            </FieldContent>
+                          </Field>
+                        </div>
+                      </div>
+
+                      {/* Re-Post */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs font-medium">Re-Post</div>
+                          <Label className="flex items-center gap-2 cursor-pointer text-xs font-normal">
+                            <input
+                              type="checkbox"
+                              checked={dailyRepublishEnabled}
+                              onChange={(e) => setDailyRepublishEnabled(e.target.checked)}
+                              className="rounded border-border"
+                            />
+                            <span>Enable</span>
+                          </Label>
+                        </div>
+                        <div className="flex flex-nowrap items-center gap-4">
+                          <Field orientation="horizontal">
+                            <FieldLabel>
+                              <Label className="text-xs">Condition</Label>
+                            </FieldLabel>
+                            <FieldContent>
+                              <Select
+                                value={dailyRepublishInterval}
+                                onValueChange={(value) => setDailyRepublishInterval(value as AutoPostingInterval)}
+                              >
+                                <SelectTrigger className="w-full" disabled={!dailyRepublishEnabled}>
+                                  <SelectValue placeholder="Select Option">
+                                    {dailyRepublishInterval
+                                      ? SCHEDULE_CONDITION_OPTIONS.find((opt) => opt.value === dailyRepublishInterval)?.label
+                                      : null}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SCHEDULE_CONDITION_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FieldContent>
+                          </Field>
+                          <Field orientation="horizontal">
+                            <FieldLabel>
+                              <Label className="text-xs">Interval</Label>
+                            </FieldLabel>
+                            <FieldContent>
                               <Input
                                 type="number"
                                 value={dailyRepublish}
                                 onChange={(e) => {
-                                  const value = parseInt(e.target.value) || 1
-                                  setDailyRepublish(Math.max(1, value))
+                                  const value = parseInt(e.target.value) || 0
+                                  setDailyRepublish(Math.max(0, value))
                                 }}
-                                min={1}
-                                className="w-24"
-                                placeholder="Enter count"
+                                min={0}
+                                className="w-20"
+                                placeholder="0"
+                                disabled={!dailyRepublishEnabled}
                               />
-                            )}
-                          </div>
-                        </FieldContent>
-                      </Field>
+                            </FieldContent>
+                          </Field>
+                        </div>
+                      </div>
                     </div>
                   </FieldGroup>
                 </CardContent>

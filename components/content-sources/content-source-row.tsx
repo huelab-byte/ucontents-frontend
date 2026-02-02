@@ -15,7 +15,7 @@ import {
   EditIcon,
   DeleteIcon,
   ClockIcon,
-  CalendarIcon,
+  Folder01Icon,
   Video01Icon,
 } from "@hugeicons/core-free-icons"
 import { ContentSource } from "./types"
@@ -37,7 +37,7 @@ export function ContentSourceRow({ source, onEdit, onDelete, onNavigate }: Conte
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           <HugeiconsIcon
-            icon={Video01Icon}
+            icon={Folder01Icon}
             className="size-6 text-primary"
           />
           <div>
@@ -64,27 +64,6 @@ export function ContentSourceRow({ source, onEdit, onDelete, onNavigate }: Conte
           <span className="text-sm font-medium">
             {source.totalVideos.toLocaleString()}
           </span>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {source.schedulerEnabled ? (
-            <>
-              <HugeiconsIcon
-                icon={CalendarIcon}
-                className="size-5 text-primary"
-              />
-              <span className="text-sm text-muted-foreground">Enabled</span>
-            </>
-          ) : (
-            <>
-              <HugeiconsIcon
-                icon={CalendarIcon}
-                className="size-5 text-muted-foreground opacity-50"
-              />
-              <span className="text-sm text-muted-foreground">Disabled</span>
-            </>
-          )}
         </div>
       </td>
       <td className="px-4 py-3">

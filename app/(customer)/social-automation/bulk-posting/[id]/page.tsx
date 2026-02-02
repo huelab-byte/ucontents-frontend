@@ -15,7 +15,9 @@ import {
   CheckmarkCircle01Icon,
   Queue01Icon,
   Video01Icon,
+  RefreshIcon,
 } from "@hugeicons/core-free-icons"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
   PlatformIcons,
@@ -24,8 +26,8 @@ import {
   ScheduledContentSection,
   type BulkPostingItem,
   type ScheduledContent,
-  demoBulkPosting,
 } from "@/components/bulk-posting"
+import { bulkPostingService } from "@/lib/api"
 
 // Generate initial scheduled content data
 function generateScheduledContent(): ScheduledContent[] {
@@ -135,28 +137,107 @@ export default function BulkPostingDetailsPage() {
   const router = useRouter()
   const campaignId = params.id as string
 
-  const [campaign, setCampaign] = React.useState<BulkPostingItem | undefined>(
-    demoBulkPosting.find((item) => item.id === campaignId)
-  )
-  
-  const [scheduledContent, setScheduledContent] = React.useState<ScheduledContent[]>(() => generateScheduledContent())
+  const [campaign, setCampaign] = React.useState<BulkPostingItem | undefined>(undefined)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [scheduledContent, setScheduledContent] = React.useState<ScheduledContent[]>([])
 
-  const handleRun = () => {
-    if (campaign) {
-      setCampaign({
-        ...campaign,
-        status: "running",
-      })
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const [campaignRes, contentRes] = await Promise.all([
+          bulkPostingService.get(campaignId),
+          bulkPostingService.getContentItems(campaignId, { per_page: 100 }),
+        ])
+        if (campaignRes.success && campaignRes.data) {
+          setCampaign(campaignRes.data as BulkPostingItem)
+        }
+        if (contentRes.success && contentRes.data) {
+          const items = Array.isArray(contentRes.data) ? contentRes.data : []
+          setScheduledContent(items as ScheduledContent[])
+        } else {
+          setScheduledContent(generateScheduledContent())
+        }
+      } catch (error) {
+        console.error("Failed to load campaign:", error)
+        setScheduledContent(generateScheduledContent())
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    load()
+  }, [campaignId])
+
+  const handleRun = async () => {
+    if (!campaign) return
+    try {
+      const response = await bulkPostingService.start(campaignId)
+      if (response.success && response.data) {
+        setCampaign(response.data as BulkPostingItem)
+      }
+    } catch (error) {
+      console.error("Failed to start campaign:", error)
     }
   }
 
-  const handlePause = () => {
-    if (campaign) {
-      setCampaign({
-        ...campaign,
-        status: "paused",
-      })
+  const handlePause = async () => {
+    if (!campaign) return
+    try {
+      const response = await bulkPostingService.pause(campaignId)
+      if (response.success && response.data) {
+        setCampaign(response.data as BulkPostingItem)
+      }
+    } catch (error) {
+      console.error("Failed to pause campaign:", error)
     }
+  }
+
+  const [isSyncing, setIsSyncing] = React.useState(false)
+
+  const handleSync = async () => {
+    if (!campaign) return
+    setIsSyncing(true)
+    try {
+      const response = await bulkPostingService.sync(campaignId)
+      if (response.success && response.data) {
+        const { added, skipped, total } = response.data
+        if (added > 0) {
+          toast.success(`Synced! Added ${added} new content items.`)
+          // Reload content items
+          const contentRes = await bulkPostingService.getContentItems(campaignId, { per_page: 100 })
+          if (contentRes.success && contentRes.data) {
+            setScheduledContent(contentRes.data as ScheduledContent[])
+          }
+          // Reload campaign to update counts
+          const campaignRes = await bulkPostingService.get(campaignId)
+          if (campaignRes.success && campaignRes.data) {
+            setCampaign(campaignRes.data as BulkPostingItem)
+          }
+        } else {
+          toast.info(`No new content found. ${skipped} items already in campaign.`)
+        }
+      } else {
+        toast.error(response.message || "Failed to sync campaign")
+      }
+    } catch (error) {
+      console.error("Failed to sync campaign:", error)
+      toast.error("Failed to sync campaign")
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <CustomerDashboardLayout>
+        <div className="space-y-6">
+          <Card className="p-12 text-center">
+            <CardContent className="pt-6">
+              <CardTitle className="mb-2">Loading campaign...</CardTitle>
+            </CardContent>
+          </Card>
+        </div>
+      </CustomerDashboardLayout>
+    )
   }
 
   if (!campaign) {
@@ -219,6 +300,21 @@ export default function BulkPostingDetailsPage() {
             </div>
           </div>
           <div className="flex items-center gap-6">
+            {/* Sync Button - only show for media_upload campaigns */}
+            {campaign.contentSourceType === "media_upload" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSync}
+                disabled={isSyncing}
+              >
+                <HugeiconsIcon 
+                  icon={RefreshIcon} 
+                  className={cn("size-4 mr-2", isSyncing && "animate-spin")} 
+                />
+                {isSyncing ? "Syncing..." : "Sync Folder"}
+              </Button>
+            )}
             {/* Status and Started Date */}
             <div className="flex items-center gap-6 flex-wrap text-sm">
               <div className="flex items-center gap-2">
@@ -319,7 +415,7 @@ export default function BulkPostingDetailsPage() {
           </Card>
         </div>
 
-        {/* Connected Platforms & Content Sources - Inline */}
+        {/* Connected Platforms & Media Sources - Inline */}
         <div className="flex items-center gap-8 flex-wrap text-sm">
           {/* Connected Platforms */}
           <div className="flex items-center gap-3">
@@ -327,9 +423,9 @@ export default function BulkPostingDetailsPage() {
             <PlatformIcons platforms={campaign.connectedTo} />
           </div>
 
-          {/* Content Sources */}
+          {/* Media Sources */}
           <div className="flex items-center gap-3">
-            <span className="text-muted-foreground font-medium">Content Sources:</span>
+            <span className="text-muted-foreground font-medium">Media Sources:</span>
             <div className="flex flex-wrap gap-2">
               {campaign.contentSource.map((source, index) => (
                 <Badge key={index} variant="secondary" className="text-sm">

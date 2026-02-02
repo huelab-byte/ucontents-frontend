@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/select"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CancelCircleIcon, Upload01Icon, FolderOpenIcon, EyeIcon } from "@hugeicons/core-free-icons"
+import { Separator } from "@/components/ui/separator"
+import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import type { CaptionSettings, CaptionTemplate } from "./types"
 
 interface NewContentModalProps {
@@ -53,21 +56,25 @@ export function NewContentModal({
     if (templateId) {
       const template = captionTemplates.find((t) => t.id === templateId)
       if (template) {
+        const outlineSize = template.outlineSize ?? 3
         onCaptionSettingsChange({
           templateId,
           font: template.font,
           fontSize: template.fontSize,
+          fontWeight: template.fontWeight ?? "regular",
           fontColor: template.fontColor,
+          outlineEnabled: outlineSize > 0,
           outlineColor: template.outlineColor,
-          outlineSize: template.outlineSize,
-          position: template.position,
+          outlineSize,
+          position: (template.position === "instagram" ? "bottom" : template.position) as "top" | "center" | "bottom",
+          positionOffset: template.positionOffset ?? 30,
           wordsPerCaption: template.wordsPerCaption,
           wordHighlighting: template.wordHighlighting,
           highlightColor: template.highlightColor,
           highlightStyle: template.highlightStyle,
           backgroundOpacity: template.backgroundOpacity,
-          enableAlternatingLoop: captionSettings.enableAlternatingLoop,
-          loopCount: captionSettings.loopCount,
+          enableAlternatingLoop: template.enableAlternatingLoop ?? captionSettings.enableAlternatingLoop,
+          loopCount: template.loopCount ?? captionSettings.loopCount,
         })
       }
     } else {
@@ -134,202 +141,249 @@ export function NewContentModal({
                         </FieldContent>
                       </Field>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Subtitle Font */}
+                      {/* Row 1: Font - 1 col */}
+                      <Field>
+                        <FieldLabel><Label>Font</Label></FieldLabel>
+                        <FieldContent>
+                          <Select
+                            value={captionSettings.font}
+                            onValueChange={(value) =>
+                              onCaptionSettingsChange({ ...captionSettings, font: value || "" })
+                            }
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {availableFonts.map((font) => (
+                                  <SelectItem key={font} value={font}>{font}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </FieldContent>
+                      </Field>
+
+                      {/* Row 2: Font Weight | Font Size */}
+                      <div className="grid grid-cols-2 gap-4">
                         <Field>
-                          <FieldLabel>
-                            <Label>Subtitle Font</Label>
-                          </FieldLabel>
+                          <FieldLabel><Label>Font Weight</Label></FieldLabel>
                           <FieldContent>
                             <Select
-                              value={captionSettings.font}
+                              value={captionSettings.fontWeight ?? "regular"}
                               onValueChange={(value) =>
-                                onCaptionSettingsChange({ ...captionSettings, font: value || "" })
+                                onCaptionSettingsChange({
+                                  ...captionSettings,
+                                  fontWeight: (value || "regular") as CaptionSettings["fontWeight"],
+                                })
                               }
                             >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                  {availableFonts.map((font) => (
-                                    <SelectItem key={font} value={font}>
-                                      {font}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="regular">Regular</SelectItem>
+                                  <SelectItem value="bold">Bold</SelectItem>
+                                  <SelectItem value="italic">Italic</SelectItem>
+                                  <SelectItem value="bold_italic">Bold Italic</SelectItem>
+                                  <SelectItem value="black">Black</SelectItem>
                                 </SelectGroup>
                               </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground mt-1.5">
-                              Add your own .ttf or .otf fonts to the font folder
-                            </p>
                           </FieldContent>
                         </Field>
-
-                        {/* Font Color */}
                         <Field>
-                          <FieldLabel>
-                            <Label>Font Color</Label>
-                          </FieldLabel>
-                          <FieldContent>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="color"
-                                value={captionSettings.fontColor}
-                                onChange={(e) =>
-                                  onCaptionSettingsChange({ ...captionSettings, fontColor: e.target.value })
-                                }
-                                className="w-16 h-10 cursor-pointer"
-                              />
-                              <Input
-                                type="text"
-                                value={captionSettings.fontColor}
-                                onChange={(e) =>
-                                  onCaptionSettingsChange({ ...captionSettings, fontColor: e.target.value })
-                                }
-                                className="font-mono"
-                                placeholder="#FFFFFF"
-                              />
-                            </div>
-                          </FieldContent>
-                        </Field>
-
-                        {/* Font Size */}
-                        <Field>
-                          <FieldLabel>
-                            <Label>Font Size: {captionSettings.fontSize}px</Label>
-                          </FieldLabel>
-                          <FieldContent>
-                            <Input
-                              type="range"
-                              min="12"
-                              max="100"
-                              value={captionSettings.fontSize}
-                              onChange={(e) =>
-                                onCaptionSettingsChange({
-                                  ...captionSettings,
-                                  fontSize: parseInt(e.target.value),
-                                })
-                              }
-                              className="w-full"
-                            />
-                          </FieldContent>
-                        </Field>
-
-                        {/* Outline Color */}
-                        <Field>
-                          <FieldLabel>
-                            <Label>Outline Color</Label>
-                          </FieldLabel>
-                          <FieldContent>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="color"
-                                value={captionSettings.outlineColor}
-                                onChange={(e) =>
-                                  onCaptionSettingsChange({
-                                    ...captionSettings,
-                                    outlineColor: e.target.value,
-                                  })
-                                }
-                                className="w-16 h-10 cursor-pointer"
-                              />
-                              <Input
-                                type="text"
-                                value={captionSettings.outlineColor}
-                                onChange={(e) =>
-                                  onCaptionSettingsChange({
-                                    ...captionSettings,
-                                    outlineColor: e.target.value,
-                                  })
-                                }
-                                className="font-mono"
-                                placeholder="#000000"
-                              />
-                            </div>
-                          </FieldContent>
-                        </Field>
-
-                        {/* Outline Size */}
-                        <Field>
-                          <FieldLabel>
-                            <Label>Outline Size: {captionSettings.outlineSize}px</Label>
-                          </FieldLabel>
-                          <FieldContent>
-                            <Input
-                              type="range"
-                              min="0"
-                              max="20"
-                              value={captionSettings.outlineSize}
-                              onChange={(e) =>
-                                onCaptionSettingsChange({
-                                  ...captionSettings,
-                                  outlineSize: parseInt(e.target.value),
-                                })
-                              }
-                              className="w-full"
-                            />
-                          </FieldContent>
-                        </Field>
-
-                        {/* Caption Position */}
-                        <Field>
-                          <FieldLabel>
-                            <Label>Caption Position</Label>
-                          </FieldLabel>
-                          <FieldContent>
-                            <div className="flex flex-wrap gap-3">
-                              {[
-                                { value: "top", label: "Top" },
-                                { value: "center", label: "Center" },
-                                { value: "bottom", label: "Bottom" },
-                                { value: "instagram", label: "Instagram Style" },
-                              ].map((option) => (
-                                <Label
-                                  key={option.value}
-                                  className="flex items-center gap-2 cursor-pointer"
-                                >
-                                  <input
-                                    type="radio"
-                                    name="caption-position"
-                                    value={option.value}
-                                    checked={captionSettings.position === option.value}
-                                    onChange={(e) =>
-                                      onCaptionSettingsChange({
-                                        ...captionSettings,
-                                        position: e.target.value as CaptionSettings["position"],
-                                      })
-                                    }
-                                    className="rounded border-border"
-                                  />
-                                  {option.label}
-                                </Label>
-                              ))}
-                            </div>
-                          </FieldContent>
-                        </Field>
-
-                        {/* Words Per Caption */}
-                        <Field>
-                          <FieldLabel>
-                            <Label>Words Per Caption</Label>
-                          </FieldLabel>
+                          <FieldLabel><Label>Font Size</Label></FieldLabel>
                           <FieldContent>
                             <Input
                               type="number"
-                              min="1"
-                              max="20"
-                              value={captionSettings.wordsPerCaption}
-                              onChange={(e) =>
+                              value={captionSettings.fontSize}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10);
                                 onCaptionSettingsChange({
                                   ...captionSettings,
-                                  wordsPerCaption: parseInt(e.target.value) || 1,
-                                })
-                              }
+                                  fontSize: isNaN(v) ? captionSettings.fontSize : v,
+                                });
+                              }}
                               className="w-full"
+                              placeholder="px"
                             />
                           </FieldContent>
                         </Field>
+                      </div>
+
+                      {/* Row 3: Color - text left, picker right */}
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-sm shrink-0">Color</Label>
+                        <Input
+                          type="color"
+                          value={captionSettings.fontColor}
+                          onChange={(e) =>
+                            onCaptionSettingsChange({ ...captionSettings, fontColor: e.target.value })
+                          }
+                          className="h-9 w-14 cursor-pointer p-1 border border-input rounded-md"
+                        />
+                      </div>
+
+                      {/* Row 4: Outline - text left, checkbox right */}
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-sm shrink-0">Outline</Label>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="modal-outline-enabled"
+                            checked={captionSettings.outlineEnabled}
+                            onCheckedChange={(checked) =>
+                              onCaptionSettingsChange({
+                                ...captionSettings,
+                                outlineEnabled: checked === true,
+                                outlineSize: checked ? (captionSettings.outlineSize || 3) : 0,
+                              })
+                            }
+                          />
+                          <Label htmlFor="modal-outline-enabled" className="text-sm cursor-pointer font-normal">Enable</Label>
+                        </div>
+                      </div>
+
+                      {/* Row 5: Outline Size | Outline Color (when outline checked) */}
+                      {captionSettings.outlineEnabled && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <Field orientation="verticalEnd">
+                            <FieldLabel><Label className="justify-start items-end">Outline Size</Label></FieldLabel>
+                            <FieldContent>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="20"
+                                value={captionSettings.outlineSize}
+                                onChange={(e) =>
+                                  onCaptionSettingsChange({
+                                    ...captionSettings,
+                                    outlineSize: Math.min(20, Math.max(0, parseInt(e.target.value) || 0)),
+                                  })
+                                }
+                                className="w-full"
+                                placeholder="px"
+                              />
+                            </FieldContent>
+                          </Field>
+                          <Field orientation="verticalEnd">
+                            <FieldLabel><Label className="justify-start items-end">Outline Color</Label></FieldLabel>
+                            <FieldContent>
+                              <Input
+                                type="color"
+                                value={captionSettings.outlineColor}
+                                onChange={(e) =>
+                                  onCaptionSettingsChange({ ...captionSettings, outlineColor: e.target.value })
+                                }
+                                className="h-9 w-14 cursor-pointer p-1 border border-input rounded-md"
+                              />
+                            </FieldContent>
+                          </Field>
+                        </div>
+                      )}
+
+                      {/* Row 6: Position */}
+                      <Field>
+                        <FieldLabel><Label>Position</Label></FieldLabel>
+                        <FieldContent>
+                          <RadioGroup
+                            value={captionSettings.position}
+                            onValueChange={(value) =>
+                              onCaptionSettingsChange({
+                                ...captionSettings,
+                                position: value as CaptionSettings["position"],
+                              })
+                            }
+                            className="flex flex-wrap gap-4"
+                          >
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="top" id="modal-position-top" />
+                              <Label htmlFor="modal-position-top" className="text-sm cursor-pointer font-normal">Top</Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="bottom" id="modal-position-bottom" />
+                              <Label htmlFor="modal-position-bottom" className="text-sm cursor-pointer font-normal">Bottom</Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="center" id="modal-position-center" />
+                              <Label htmlFor="modal-position-center" className="text-sm cursor-pointer font-normal">Center</Label>
+                            </div>
+                          </RadioGroup>
+                        </FieldContent>
+                      </Field>
+
+                      {/* Row 7: Distance from edge (when top or bottom) */}
+                      {(captionSettings.position === "top" || captionSettings.position === "bottom") && (
+                        <div className="flex items-center justify-between gap-4">
+                          <Label className="text-sm shrink-0">Distance from edge (px)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="500"
+                            value={captionSettings.positionOffset}
+                            onChange={(e) =>
+                              onCaptionSettingsChange({
+                                ...captionSettings,
+                                positionOffset: Math.max(0, parseInt(e.target.value) || 0),
+                              })
+                            }
+                            className="w-24"
+                          />
+                        </div>
+                      )}
+
+                      <Separator />
+
+                      {/* Caption and Video Playback */}
+                      {/* Row: Caption word count - left text, right number input (default 3) */}
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-sm shrink-0">Caption word count</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={captionSettings.wordsPerCaption}
+                          onChange={(e) =>
+                            onCaptionSettingsChange({
+                              ...captionSettings,
+                              wordsPerCaption: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)),
+                            })
+                          }
+                          className="w-24"
+                        />
+                      </div>
+                      {/* Row: Video Loop - left text, right number input */}
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-sm shrink-0">Video Loop</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={captionSettings.loopCount}
+                          onChange={(e) =>
+                            onCaptionSettingsChange({
+                              ...captionSettings,
+                              loopCount: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)),
+                            })
+                          }
+                          className="w-24"
+                        />
+                      </div>
+                      {/* Row: Reverse Play - left text, right checkbox */}
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-sm shrink-0">Reverse Play</Label>
+                        {captionSettings.loopCount <= 1 ? (
+                          <Checkbox
+                            id="modal-reverse-play"
+                            checked={captionSettings.enableAlternatingLoop}
+                            onCheckedChange={(checked) =>
+                              onCaptionSettingsChange({
+                                ...captionSettings,
+                                enableAlternatingLoop: checked === true,
+                              })
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Only when loop is 1</p>
+                        )}
                       </div>
                     </FieldGroup>
                   </form>
@@ -401,13 +455,15 @@ export function NewContentModal({
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Colors</div>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="w-4 h-4 rounded border border-border" style={{ backgroundColor: captionSettings.fontColor }} />
-                    <span className="text-xs font-mono">{captionSettings.fontColor}</span>
+                    <div className="w-5 h-5 rounded border border-border shrink-0" style={{ backgroundColor: captionSettings.fontColor }} title={captionSettings.fontColor} />
+                    <span className="text-xs">Text</span>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-4 h-4 rounded border border-border" style={{ backgroundColor: captionSettings.outlineColor }} />
-                    <span className="text-xs font-mono">{captionSettings.outlineColor}</span>
-                  </div>
+                  {captionSettings.outlineEnabled && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-5 h-5 rounded border border-border shrink-0" style={{ backgroundColor: captionSettings.outlineColor }} title={captionSettings.outlineColor} />
+                      <span className="text-xs">Outline</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Position</div>
@@ -418,8 +474,10 @@ export function NewContentModal({
                   <div className="text-sm font-medium">{captionSettings.wordsPerCaption}</div>
                 </div>
                 <div className="p-3 bg-background rounded-lg border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">Outline Size</div>
-                  <div className="text-sm font-medium">{captionSettings.outlineSize}px</div>
+                  <div className="text-xs text-muted-foreground mb-1">Outline</div>
+                  <div className="text-sm font-medium">
+                    {captionSettings.outlineEnabled ? `${captionSettings.outlineSize}px` : "Off"}
+                  </div>
                 </div>
               </div>
               <div className="pt-4 border-t border-border">

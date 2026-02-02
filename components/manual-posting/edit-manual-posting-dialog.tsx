@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ManualPostingForm } from "./manual-posting-form"
+import { ManualPostingForm, type AutoPostingInterval } from "./manual-posting-form"
 import type { ManualPostingItem } from "./types"
 
 interface EditManualPostingDialogProps {
@@ -32,8 +32,10 @@ export function EditManualPostingDialog({ item, onUpdate, onClose }: EditManualP
     youtube: false,
   })
   const [dailyAutoPosting, setDailyAutoPosting] = React.useState(1)
+  const [autoPostingInterval, setAutoPostingInterval] = React.useState<AutoPostingInterval>("")
   const [dailyRepublishEnabled, setDailyRepublishEnabled] = React.useState(false)
-  const [dailyRepublish, setDailyRepublish] = React.useState(1)
+  const [dailyRepublish, setDailyRepublish] = React.useState(0)
+  const [dailyRepublishInterval, setDailyRepublishInterval] = React.useState<AutoPostingInterval>("")
 
   React.useEffect(() => {
     if (item) {
@@ -122,8 +124,10 @@ export function EditManualPostingDialog({ item, onUpdate, onClose }: EditManualP
             logoPreview={logoPreview}
             connectedTo={connectedTo}
             dailyAutoPosting={dailyAutoPosting}
+            autoPostingInterval={autoPostingInterval}
             dailyRepublishEnabled={dailyRepublishEnabled}
             dailyRepublish={dailyRepublish}
+            dailyRepublishInterval={dailyRepublishInterval}
             onBrandNameChange={setBrandName}
             onProjectNameChange={setProjectName}
             onContentSourceChange={setContentSource}
@@ -134,8 +138,10 @@ export function EditManualPostingDialog({ item, onUpdate, onClose }: EditManualP
             }}
             onPlatformConnection={handlePlatformConnection}
             onDailyAutoPostingChange={setDailyAutoPosting}
+            onAutoPostingIntervalChange={setAutoPostingInterval}
             onDailyRepublishEnabledChange={setDailyRepublishEnabled}
             onDailyRepublishChange={setDailyRepublish}
+            onDailyRepublishIntervalChange={setDailyRepublishInterval}
             logoInputId="brand-logo-upload-edit"
           />
           <AlertDialogFooter className="mt-6">

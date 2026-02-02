@@ -102,6 +102,7 @@ export default function AdminProfilePage() {
           setTwoFactorStatus(response.data)
         }
       } catch (err) {
+        console.error("Failed to fetch 2FA status:", err)
       } finally {
         setLoading2FA(false)
       }

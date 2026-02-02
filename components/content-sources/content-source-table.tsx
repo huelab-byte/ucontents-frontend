@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ContentSource } from "./types"
 import { ContentSourceRow } from "./content-source-row"
 import { Pagination } from "./pagination"
+import { NewSourceDialog } from "./new-source-dialog"
 
 interface ContentSourceTableProps {
   sources: ContentSource[]
@@ -14,6 +15,7 @@ interface ContentSourceTableProps {
   onDelete: (id: string) => void
   onNavigate: (id: string) => void
   onPageChange: (page: number) => void
+  onCreateSource: (source: Omit<ContentSource, "id" | "createdAt" | "campaigns" | "totalVideos">) => void
 }
 
 export function ContentSourceTable({
@@ -24,6 +26,7 @@ export function ContentSourceTable({
   onDelete,
   onNavigate,
   onPageChange,
+  onCreateSource,
 }: ContentSourceTableProps) {
   const totalPages = Math.ceil(sources.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -32,8 +35,9 @@ export function ContentSourceTable({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Content Sources</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Media Upload</CardTitle>
+        <NewSourceDialog onCreate={onCreateSource} />
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -48,9 +52,6 @@ export function ContentSourceTable({
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                   Total Videos
-                </th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                  Scheduler
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                   Created

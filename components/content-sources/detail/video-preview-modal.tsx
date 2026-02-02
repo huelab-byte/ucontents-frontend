@@ -9,9 +9,6 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { CancelCircleIcon } from "@hugeicons/core-free-icons"
 
 interface VideoPreviewModalProps {
   videoUrl: string | null
@@ -23,20 +20,9 @@ export function VideoPreviewModal({ videoUrl, onClose }: VideoPreviewModalProps)
     <AlertDialog open={!!videoUrl} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent className="max-w-4xl w-full mx-4">
         <AlertDialogHeader>
-          <div className="flex items-center justify-between">
-            <AlertDialogTitle>Video Preview</AlertDialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <HugeiconsIcon icon={CancelCircleIcon} className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </div>
+          <AlertDialogTitle>Video Preview</AlertDialogTitle>
         </AlertDialogHeader>
-        <div className="mt-4">
+        <div className="mt-2">
           {videoUrl && (
             <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
               <video

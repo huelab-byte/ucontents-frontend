@@ -12,13 +12,10 @@ import {
   PlayIcon,
   ImageIcon,
   Video01Icon,
-  FacebookIcon,
-  InstagramIcon,
-  TiktokIcon,
-  YoutubeIcon,
 } from "@hugeicons/core-free-icons"
+import { FaFacebook, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa"
 import { cn } from "@/lib/utils"
-import type { ScheduledContent } from "../types"
+import type { ScheduledContent, NetworkResult } from "../types"
 
 interface ScheduledContentSectionProps {
   campaignId: string
@@ -80,22 +77,40 @@ export function ScheduledContentSection({
   const isAllSelected = currentItems.length > 0 && currentItems.every((item) => selectedItems.has(item.id))
   const isIndeterminate = currentItems.some((item) => selectedItems.has(item.id)) && !isAllSelected
 
-  const formatDateDisplay = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  const formatDateTime = (isoString: string): { date: string; time: string } => {
+    if (!isoString) return { date: "N/A", time: "" }
+    const date = new Date(isoString)
+    if (isNaN(date.getTime())) return { date: "Invalid Date", time: "" }
+    
+    return {
+      date: date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      time: date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+    }
+  }
+
+  // Map provider/type to platform name
+  const getPlatformFromResult = (result: NetworkResult): "facebook" | "instagram" | "tiktok" | "youtube" | null => {
+    if (result.provider === 'meta') {
+      if (result.type?.includes('instagram')) return 'instagram'
+      return 'facebook'
+    }
+    if (result.provider === 'google') return 'youtube'
+    if (result.provider === 'tiktok') return 'tiktok'
+    return null
   }
 
   const getPlatformIcon = (platform: "facebook" | "instagram" | "tiktok" | "youtube") => {
     const icons = {
-      facebook: FacebookIcon,
-      instagram: InstagramIcon,
-      tiktok: TiktokIcon,
-      youtube: YoutubeIcon,
+      facebook: FaFacebook,
+      instagram: FaInstagram,
+      tiktok: FaTiktok,
+      youtube: FaYoutube,
     }
     return icons[platform]
   }
 
-  const getPlatformColor = (platform: "facebook" | "instagram" | "tiktok" | "youtube") => {
+  const getPlatformColor = (platform: "facebook" | "instagram" | "tiktok" | "youtube", success: boolean = true) => {
+    if (!success) return "#9CA3AF" // Gray for failed
     const colors = {
       facebook: "#1877F2",
       instagram: "#E4405F",
@@ -152,8 +167,8 @@ export function ScheduledContentSection({
                     onChange={(e) => handleSelectAll(e.target.checked)}
                   />
                 </th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">Date</th>
                 <th className="text-left p-3 text-xs font-medium text-muted-foreground">Post</th>
+                <th className="text-left p-3 text-xs font-medium text-muted-foreground">Published At</th>
                 <th className="text-left p-3 text-xs font-medium text-muted-foreground">Networks</th>
                 <th className="text-left p-3 text-xs font-medium text-muted-foreground">Status</th>
               </tr>
@@ -170,55 +185,95 @@ export function ScheduledContentSection({
                     />
                   </td>
                   <td className="p-3">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium">{formatDateDisplay(item.date)}</span>
-                      <span className="text-[10px] text-muted-foreground">{item.time}</span>
-                    </div>
-                  </td>
-                  <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <div className="size-16 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                         {item.type === "video" ? (
                           <div className="relative w-full h-full">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
                             <HugeiconsIcon 
                               icon={PlayIcon} 
-                              className="size-6 text-primary absolute inset-0 m-auto" 
+                              className="size-4 text-primary absolute inset-0 m-auto" 
                             />
                           </div>
                         ) : item.type === "image" ? (
-                          <HugeiconsIcon icon={ImageIcon} className="size-6 text-muted-foreground" />
+                          <HugeiconsIcon icon={ImageIcon} className="size-4 text-muted-foreground" />
                         ) : (
-                          <HugeiconsIcon icon={Video01Icon} className="size-6 text-muted-foreground" />
+                          <HugeiconsIcon icon={Video01Icon} className="size-4 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium line-clamp-2">{item.contentText || item.title}</p>
+                      <div className="flex-1 min-w-0 max-w-md">
+                        <p className="text-xs font-medium line-clamp-1" title={item.contentText || item.title}>
+                          {(item.contentText || item.title || '').length > 80 
+                            ? `${(item.contentText || item.title || '').substring(0, 80)}...` 
+                            : (item.contentText || item.title)}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="p-3">
+                    {(() => {
+                      const { date, time } = formatDateTime(item.publishedAt)
+                      return (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-medium">{date}</span>
+                          <span className="text-[10px] text-muted-foreground">{time}</span>
+                        </div>
+                      )
+                    })()}
+                  </td>
+                  <td className="p-3">
                     <div className="flex items-center gap-2">
-                      {item.platforms.map((platform) => {
-                        const Icon = getPlatformIcon(platform)
-                        const platformName = platform.charAt(0).toUpperCase() + platform.slice(1)
-                        const statusText = item.status === "published" ? "Published" : item.status === "scheduled" ? "Scheduled" : "Error"
-                        const tooltipText = `${statusText} on ${platformName}`
-                        return (
-                          <div
-                            key={platform}
-                            className="size-8 rounded-full flex items-center justify-center text-white cursor-help relative group"
-                            style={{ backgroundColor: getPlatformColor(platform) }}
-                            title={tooltipText}
-                          >
-                            <HugeiconsIcon icon={Icon} className="size-4" />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                              {tooltipText}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                      {/* Show network results if available */}
+                      {item.networkResults && item.networkResults.length > 0 ? (
+                        item.networkResults.map((result, idx) => {
+                          const platform = getPlatformFromResult(result)
+                          if (!platform) return null
+                          const Icon = getPlatformIcon(platform)
+                          const statusText = result.success ? "Published" : "Failed"
+                          const tooltipText = result.success 
+                            ? `${statusText} on ${result.name || platform}`
+                            : `${statusText}: ${result.error || 'Unknown error'}`
+                          return (
+                            <div
+                              key={`${result.channelId}-${idx}`}
+                              className={cn(
+                                "size-6 rounded-full flex items-center justify-center cursor-help relative group",
+                                result.success ? "text-white" : "text-white"
+                              )}
+                              style={{ backgroundColor: getPlatformColor(platform, result.success) }}
+                              title={tooltipText}
+                            >
+                              <Icon className="size-3.5" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 max-w-[200px] text-center">
+                                {tooltipText}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                              </div>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })
+                      ) : (
+                        /* Fallback to platforms array for backward compatibility */
+                        item.platforms.map((platform) => {
+                          const Icon = getPlatformIcon(platform)
+                          const platformName = platform.charAt(0).toUpperCase() + platform.slice(1)
+                          const statusText = item.status === "published" ? "Published" : item.status === "scheduled" ? "Scheduled" : "Error"
+                          const tooltipText = `${statusText} on ${platformName}`
+                          return (
+                            <div
+                              key={platform}
+                              className="size-6 rounded-full flex items-center justify-center text-white cursor-help relative group"
+                              style={{ backgroundColor: getPlatformColor(platform) }}
+                              title={tooltipText}
+                            >
+                              <Icon className="size-3.5" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                {tooltipText}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
                     </div>
                   </td>
                   <td className="p-3">

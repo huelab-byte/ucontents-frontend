@@ -18,7 +18,8 @@ import {
   FileIcon,
   MoreVerticalCircle01Icon,
   PlayIcon,
-  ClockIcon,
+  ViewIcon,
+  PencilEdit01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import type { ContentMetadata } from "./types"
@@ -28,6 +29,7 @@ interface ContentMetadataTableProps {
   selectedMetadataIds: Set<string>
   onToggleSelection: (id: string) => void
   onSelectAll: (currentPageItems: ContentMetadata[]) => void
+  onView: (item: ContentMetadata) => void
   onEdit: (item: ContentMetadata) => void
   onDelete: (id: string) => void
   onBatchDelete: () => void
@@ -40,6 +42,7 @@ export function ContentMetadataTable({
   selectedMetadataIds,
   onToggleSelection,
   onSelectAll,
+  onView,
   onEdit,
   onDelete,
   onBatchDelete,
@@ -130,18 +133,15 @@ export function ContentMetadataTable({
                 <th className="text-left text-xs font-medium text-muted-foreground px-2 py-1.5">
                   Status
                 </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-2 py-1.5">
-                  Created
-                </th>
                 <th className="text-right text-xs font-medium text-muted-foreground px-2 py-1.5 w-10">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {currentMetadata.map((item) => (
+              {currentMetadata.map((item, index) => (
                 <tr
-                  key={item.id}
+                  key={`${item.id}-${startIndex + index}`}
                   className={cn(
                     "border-b border-border hover:bg-muted/50 transition-colors",
                     selectedMetadataIds.has(item.id) && "bg-muted/30"
@@ -195,17 +195,13 @@ export function ContentMetadataTable({
                       className="text-xs py-0"
                     >
                       {item.status === "published"
-                        ? "Ready to Publish"
-                        : item.status
-                          ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
-                          : ""}
+                        ? "Published"
+                        : item.status === "scheduled"
+                          ? "Processing"
+                          : item.status === "draft"
+                            ? "Ready"
+                            : ""}
                     </Badge>
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <HugeiconsIcon icon={ClockIcon} className="size-3" />
-                      <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                    </div>
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <DropdownMenu>
@@ -216,8 +212,12 @@ export function ContentMetadataTable({
                         <span className="sr-only">Options</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onView(item)}>
+                          <HugeiconsIcon icon={ViewIcon} className="size-3.5 mr-2" />
+                          View
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onEdit(item)}>
-                          <HugeiconsIcon icon={FileIcon} className="size-3.5 mr-2" />
+                          <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem

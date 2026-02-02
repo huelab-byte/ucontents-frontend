@@ -66,11 +66,11 @@ export function NewSourceDialog({ onCreate }: NewSourceDialogProps) {
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger render={<Button className="flex items-center gap-2" />}>
         <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} className="size-4" />
-        New Content Source
+        New Folder
       </AlertDialogTrigger>
       <AlertDialogContent className="max-w-md w-full mx-4">
         <AlertDialogHeader>
-          <AlertDialogTitle>Create New Content Source</AlertDialogTitle>
+          <AlertDialogTitle>Create New Media Source</AlertDialogTitle>
         </AlertDialogHeader>
         <form onSubmit={handleSubmit}>
           <FieldGroup className="gap-4">

@@ -65,6 +65,8 @@ export function LibraryTable({
     }
   }
 
+  const canEditOrDelete = typeof onEdit === "function" || typeof onDelete === "function"
+
   return (
     <Card className="mr-0 sm:mr-[26px]">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -77,7 +79,7 @@ export function LibraryTable({
             <TableRow>
               <TableHead>Folder</TableHead>
               <TableHead className="text-center">Total Images</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {canEditOrDelete && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -96,32 +98,34 @@ export function LibraryTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-center">{library.image_count ?? 0}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="size-8">
-                        <HugeiconsIcon icon={MoreVerticalIcon} className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {onEdit && (
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(library); }}>
-                          <HugeiconsIcon icon={Edit01Icon} className="size-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-                      {onDelete && (
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={(e) => { e.stopPropagation(); onDelete(library); }}
-                        >
-                          <HugeiconsIcon icon={Delete01Icon} className="size-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {canEditOrDelete && (
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="size-8">
+                          <HugeiconsIcon icon={MoreVerticalIcon} className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onEdit && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(library); }}>
+                            <HugeiconsIcon icon={Edit01Icon} className="size-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => { e.stopPropagation(); onDelete(library); }}
+                          >
+                            <HugeiconsIcon icon={Delete01Icon} className="size-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

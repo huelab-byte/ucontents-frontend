@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Field, FieldGroup, FieldLabel, FieldContent, FieldDescription } from "@/components/ui/field"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Combobox,
   ComboboxContent,
   ComboboxEmpty,
@@ -21,6 +28,16 @@ import { PlatformConnectionButtons } from "./platform-connection-buttons"
 import { contentSources } from "./constants"
 import type { ManualPostingItem } from "./types"
 
+export type AutoPostingInterval = "minute" | "hourly" | "daily" | "weekly" | "monthly" | ""
+
+const SCHEDULE_CONDITION_OPTIONS: { value: AutoPostingInterval; label: string }[] = [
+  { value: "minute", label: "Minute" },
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+]
+
 interface ManualPostingFormProps {
   brandName: string
   projectName: string
@@ -29,8 +46,10 @@ interface ManualPostingFormProps {
   logoPreview: string
   connectedTo: ManualPostingItem["connectedTo"]
   dailyAutoPosting: number
+  autoPostingInterval: AutoPostingInterval
   dailyRepublishEnabled: boolean
   dailyRepublish: number
+  dailyRepublishInterval: AutoPostingInterval
   onBrandNameChange: (value: string) => void
   onProjectNameChange: (value: string) => void
   onContentSourceChange: (value: string[]) => void
@@ -38,8 +57,10 @@ interface ManualPostingFormProps {
   onRemoveLogo: () => void
   onPlatformConnection: (platform: keyof ManualPostingItem["connectedTo"]) => void
   onDailyAutoPostingChange: (value: number) => void
+  onAutoPostingIntervalChange: (value: AutoPostingInterval) => void
   onDailyRepublishEnabledChange: (value: boolean) => void
   onDailyRepublishChange: (value: number) => void
+  onDailyRepublishIntervalChange: (value: AutoPostingInterval) => void
   logoInputId?: string
 }
 
@@ -51,8 +72,10 @@ export function ManualPostingForm({
   logoPreview,
   connectedTo,
   dailyAutoPosting,
+  autoPostingInterval,
   dailyRepublishEnabled,
   dailyRepublish,
+  dailyRepublishInterval,
   onBrandNameChange,
   onProjectNameChange,
   onContentSourceChange,
@@ -60,8 +83,10 @@ export function ManualPostingForm({
   onRemoveLogo,
   onPlatformConnection,
   onDailyAutoPostingChange,
+  onAutoPostingIntervalChange,
   onDailyRepublishEnabledChange,
   onDailyRepublishChange,
+  onDailyRepublishIntervalChange,
   logoInputId = "brand-logo-upload",
 }: ManualPostingFormProps) {
   const anchorRef = useComboboxAnchor()
@@ -200,59 +225,123 @@ export function ManualPostingForm({
         </FieldContent>
       </Field>
 
-      {/* Posting Settings Section */}
-      <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
-        <div className="text-xs font-medium mb-3">Posting Settings</div>
+      {/* Post Schedule & Re-Post Section */}
+      <div className="space-y-6 p-4 border border-border rounded-lg bg-muted/30">
+        {/* Post Schedule */}
         <div className="space-y-4">
-          <Field orientation="horizontal">
-            <FieldLabel>
-              <Label>Daily Auto Posting</Label>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                type="number"
-                value={dailyAutoPosting}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value) || 1
-                  onDailyAutoPostingChange(Math.max(1, value))
-                }}
-                min={1}
-                className="w-24"
-                placeholder="Enter count"
+          <div className="text-xs font-medium">Post Schedule</div>
+          <div className="flex flex-nowrap items-center gap-4">
+            <Field orientation="horizontal">
+              <FieldLabel>
+                <Label>Condition</Label>
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  value={autoPostingInterval}
+                  onValueChange={(value) => onAutoPostingIntervalChange(value as AutoPostingInterval)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Option">
+                      {autoPostingInterval
+                        ? SCHEDULE_CONDITION_OPTIONS.find((opt) => opt.value === autoPostingInterval)?.label
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCHEDULE_CONDITION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel>
+                <Label>Interval</Label>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  value={dailyAutoPosting}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1
+                    onDailyAutoPostingChange(Math.max(1, value))
+                  }}
+                  min={1}
+                  className="w-full"
+                  placeholder="0"
+                  aria-label="Post schedule interval"
+                />
+              </FieldContent>
+            </Field>
+          </div>
+        </div>
+
+        {/* Re-Post */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium">Re-Post</div>
+            <Label className="flex items-center gap-2 cursor-pointer text-xs font-normal">
+              <input
+                type="checkbox"
+                checked={dailyRepublishEnabled}
+                onChange={(e) => onDailyRepublishEnabledChange(e.target.checked)}
+                className="rounded border-border"
               />
-            </FieldContent>
-          </Field>
-          <Field orientation="horizontal">
-            <FieldLabel>
-              <Label>Daily Republish</Label>
-            </FieldLabel>
-            <FieldContent>
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={dailyRepublishEnabled}
-                    onChange={(e) => onDailyRepublishEnabledChange(e.target.checked)}
-                    className="rounded border-border"
-                  />
-                  <span className="text-sm">Enable daily republish</span>
-                </Label>
-                {dailyRepublishEnabled && (
+              <span>Enable</span>
+            </Label>
+          </div>
+          {dailyRepublishEnabled && (
+            <div className="flex flex-nowrap items-center gap-4">
+              <Field orientation="horizontal">
+                <FieldLabel>
+                  <Label>Condition</Label>
+                </FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={dailyRepublishInterval}
+                    onValueChange={(value) => onDailyRepublishIntervalChange(value as AutoPostingInterval)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Option">
+                        {dailyRepublishInterval
+                          ? SCHEDULE_CONDITION_OPTIONS.find((opt) => opt.value === dailyRepublishInterval)?.label
+                          : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SCHEDULE_CONDITION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+              <Field orientation="horizontal">
+                <FieldLabel>
+                  <Label>Interval</Label>
+                </FieldLabel>
+                <FieldContent>
                   <Input
                     type="number"
                     value={dailyRepublish}
                     onChange={(e) => {
-                      const value = parseInt(e.target.value) || 1
-                      onDailyRepublishChange(Math.max(1, value))
+                      const value = parseInt(e.target.value) || 0
+                      onDailyRepublishChange(Math.max(0, value))
                     }}
-                    min={1}
-                    className="w-24"
-                    placeholder="Enter count"
+                    min={0}
+                    className="w-full"
+                    placeholder="0"
+                    aria-label="Re post interval"
                   />
-                )}
-              </div>
-            </FieldContent>
-          </Field>
+                </FieldContent>
+              </Field>
+            </div>
+          )}
         </div>
       </div>
     </FieldGroup>

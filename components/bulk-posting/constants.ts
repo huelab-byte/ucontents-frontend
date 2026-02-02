@@ -1,4 +1,78 @@
-import type { BulkPostingItem } from "./types"
+import type { BulkPostingItem, ContentSourceType } from "./types"
+import type { SocialChannel, SocialConnectionGroup } from "@/lib/api"
+
+// Demo channels for development (in production, these come from the API)
+export const demoChannels: SocialChannel[] = [
+  {
+    id: 1,
+    provider: "meta",
+    type: "facebook_page",
+    provider_channel_id: "123456789",
+    name: "Acme Business Page",
+    username: "acmebusiness",
+    avatar_url: null,
+    is_active: true,
+    group_id: 1,
+  },
+  {
+    id: 2,
+    provider: "meta",
+    type: "instagram_business",
+    provider_channel_id: "987654321",
+    name: "Acme Instagram",
+    username: "@acme_official",
+    avatar_url: null,
+    is_active: true,
+    group_id: 1,
+  },
+  {
+    id: 3,
+    provider: "google",
+    type: "youtube_channel",
+    provider_channel_id: "UC123456",
+    name: "Acme YouTube Channel",
+    username: "AcmeOfficial",
+    avatar_url: null,
+    is_active: true,
+    group_id: null,
+  },
+  {
+    id: 4,
+    provider: "tiktok",
+    type: "tiktok_profile",
+    provider_channel_id: "tiktok123",
+    name: "Acme TikTok",
+    username: "@acme_tiktok",
+    avatar_url: null,
+    is_active: true,
+    group_id: 2,
+  },
+  {
+    id: 5,
+    provider: "meta",
+    type: "facebook_page",
+    provider_channel_id: "555555555",
+    name: "Tech Brand Page",
+    username: "techbrand",
+    avatar_url: null,
+    is_active: true,
+    group_id: 2,
+  },
+]
+
+// Demo groups for development (in production, these come from the API)
+export const demoGroups: SocialConnectionGroup[] = [
+  {
+    id: 1,
+    name: "Main Brand Accounts",
+    user_id: 1,
+  },
+  {
+    id: 2,
+    name: "Secondary Channels",
+    user_id: 1,
+  },
+]
 
 export const demoBulkPosting: BulkPostingItem[] = [
   {
@@ -7,13 +81,12 @@ export const demoBulkPosting: BulkPostingItem[] = [
       name: "Acme Corporation",
       projectName: "Summer Campaign Toolkit",
     },
-    connectedTo: {
-      facebook: true,
-      instagram: true,
-      tiktok: false,
-      youtube: true,
+    connections: {
+      channels: [1, 2],
+      groups: [],
     },
-    contentSource: ["Instagram Stories Source"],
+    contentSourceType: "media_upload",
+    contentSource: ["Instagram Stories"],
     totalPost: 100,
     postedAmount: 45,
     remainingContent: 55,
@@ -26,13 +99,12 @@ export const demoBulkPosting: BulkPostingItem[] = [
       name: "TechStart Inc",
       projectName: "Product Launch Kit",
     },
-    connectedTo: {
-      facebook: true,
-      instagram: true,
-      tiktok: true,
-      youtube: true,
+    connections: {
+      channels: [],
+      groups: [1],
     },
-    contentSource: ["TikTok Vertical Source"],
+    contentSourceType: "csv_file",
+    contentSource: [],
     totalPost: 250,
     postedAmount: 250,
     remainingContent: 0,
@@ -45,13 +117,12 @@ export const demoBulkPosting: BulkPostingItem[] = [
       name: "Fashion Hub",
       projectName: "Spring Collection",
     },
-    connectedTo: {
-      facebook: false,
-      instagram: true,
-      tiktok: true,
-      youtube: false,
+    connections: {
+      channels: [2, 4],
+      groups: [],
     },
-    contentSource: ["Instagram Stories Source"],
+    contentSourceType: "media_upload",
+    contentSource: ["Instagram Stories"],
     totalPost: 80,
     postedAmount: 0,
     remainingContent: 80,
@@ -64,13 +135,12 @@ export const demoBulkPosting: BulkPostingItem[] = [
       name: "Foodie Delights",
       projectName: "Recipe Series",
     },
-    connectedTo: {
-      facebook: true,
-      instagram: true,
-      tiktok: false,
-      youtube: true,
+    connections: {
+      channels: [1, 3],
+      groups: [],
     },
-    contentSource: ["YouTube Shorts Source"],
+    contentSourceType: "media_upload",
+    contentSource: ["YouTube Shorts"],
     totalPost: 150,
     postedAmount: 120,
     remainingContent: 30,
@@ -83,13 +153,12 @@ export const demoBulkPosting: BulkPostingItem[] = [
       name: "Fitness Plus",
       projectName: "Workout Challenge",
     },
-    connectedTo: {
-      facebook: true,
-      instagram: false,
-      tiktok: true,
-      youtube: true,
+    connections: {
+      channels: [],
+      groups: [2],
     },
-    contentSource: ["Facebook Feed Source"],
+    contentSourceType: "media_upload",
+    contentSource: ["Facebook Feed"],
     totalPost: 200,
     postedAmount: 50,
     remainingContent: 150,
@@ -98,11 +167,30 @@ export const demoBulkPosting: BulkPostingItem[] = [
   },
 ]
 
-export const contentSources = [
-  "Instagram Stories Source",
-  "YouTube Shorts Source",
-  "Facebook Feed Source",
-  "TikTok Vertical Source",
-  "LinkedIn Landscape Source",
-  "Twitter Video Source",
+// Content source type options for initial selection
+export const contentSourceTypeOptions: { value: ContentSourceType; label: string; description: string }[] = [
+  {
+    value: "csv_file",
+    label: "From File",
+    description: "Import content from a CSV file",
+  },
+  {
+    value: "media_upload",
+    label: "Media Upload",
+    description: "Select folders from media library",
+  },
 ]
+
+// Demo media folders for selection (in production, these will come from the MediaUpload module API)
+export const mediaFolders = [
+  "Instagram Stories",
+  "YouTube Shorts",
+  "Facebook Feed",
+  "TikTok Vertical",
+  "LinkedIn Landscape",
+  "Twitter Videos",
+]
+
+// Legacy exports for backward compatibility
+export const mediaModules = mediaFolders
+export const contentSources = mediaFolders

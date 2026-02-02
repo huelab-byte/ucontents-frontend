@@ -46,6 +46,7 @@ export interface PublicGeneralSettings {
   maintenance_mode: boolean
   terms_of_service_url?: string
   privacy_policy_url?: string
+  timezone?: string
 }
 
 export interface UpdateGeneralSettingsRequest {

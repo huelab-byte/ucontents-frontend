@@ -6,6 +6,7 @@ import { CustomerDashboardLayout } from "@/components/customer-dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { socialConnectionService, type SocialProvider, type SocialChannel } from "@/lib/api"
+import { toast } from "@/lib/toast"
 
 const PROVIDER_LABELS: Record<SocialProvider, string> = {
   meta: "Meta (Facebook/Instagram)",
@@ -52,6 +53,8 @@ export default function SocialConnectionPage() {
         window.location.href = res.data.redirect_url
       }
     } catch (e) {
+      console.error("Failed to get redirect URL for", provider, e)
+      toast.error("Failed to connect. Please try again.")
     }
   }
 

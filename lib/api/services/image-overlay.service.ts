@@ -138,8 +138,23 @@ export const imageOverlayService = {
   },
 
   /**
-   * Customer: list image overlays
+   * Customer: list folders that have browse-visible image overlays (read-only; requires use_image_overlay)
    */
+  async browseFolders(): Promise<ApiResponse<ImageOverlayFolder[]>> {
+    return apiClient.get('/v1/customer/image-overlay/browse/folders')
+  },
+
+  /**
+   * Customer: browse image overlays (read-only; requires use_image_overlay)
+   */
+  async browseImageOverlays(params?: ImageOverlayListParams): Promise<ApiResponse<ImageOverlay[]>> {
+    return apiClient.get('/v1/customer/image-overlay/browse', { params })
+  },
+
+  async getBrowseImageOverlay(id: number): Promise<ApiResponse<ImageOverlay>> {
+    return apiClient.get(`/v1/customer/image-overlay/browse/${id}`)
+  },
+
   async listImageOverlays(params?: ImageOverlayListParams): Promise<ApiResponse<ImageOverlay[]>> {
     return apiClient.get('/v1/customer/image-overlay/image-overlays', { params })
   },

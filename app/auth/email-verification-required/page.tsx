@@ -82,6 +82,7 @@ export default function EmailVerificationRequiredPage() {
             }
           }
         } catch (error) {
+          console.error("Failed to sync verification status with backend:", error)
         }
       }
 

@@ -145,6 +145,15 @@ export type {
   UpdateNotificationSettingsRequest,
 } from './services/notification-settings.service'
 
+export { planService } from './services/plan.service'
+export type {
+  Plan,
+  CreatePlanRequest,
+  UpdatePlanRequest,
+  PlanListParams,
+  PlanSubscriptionType,
+} from './services/plan.service'
+
 export { supportService } from './services/support.service'
 export type {
   SupportTicket,
@@ -263,6 +272,53 @@ export type {
   UserWithUploadCount as ImageOverlayUserWithUploadCount,
   UploadQueueStatus as ImageOverlayUploadQueueStatus,
 } from './services/image-overlay.service'
+
+export { mediaUploadService } from './services/media-upload.service'
+export type {
+  MediaUploadFolder,
+  MediaUploadContentSettings,
+  CaptionTemplate,
+  MediaUpload,
+  MediaUploadStorageFile,
+  MediaUploadStatus,
+  UploadQueueStatus as MediaUploadQueueStatus,
+  CreateFolderRequest as MediaUploadCreateFolderRequest,
+  UpdateFolderRequest as MediaUploadUpdateFolderRequest,
+  UpdateContentSettingsRequest,
+  CreateCaptionTemplateRequest,
+  UpdateCaptionTemplateRequest,
+  UpdateMediaUploadRequest,
+  MediaUploadListParams,
+} from './services/media-upload.service'
+
+export { proxySetupService } from './services/proxy-setup.service'
+export { bulkPostingService } from './services/bulk-posting.service'
+export type {
+  Proxy,
+  ProxyType,
+  ProxyCheckStatus,
+  ProxyChannel,
+  ProxyWithChannels,
+  ProxySettings,
+  ProxyFailureAction,
+  ProxyTestResult,
+  CreateProxyRequest,
+  UpdateProxyRequest,
+  UpdateProxySettingsRequest,
+  AssignChannelsRequest,
+} from './services/proxy-setup.service'
+
+export type {
+  BulkPostingCampaign,
+  ContentSourceType,
+  CampaignStatus,
+  ScheduleCondition,
+  ConnectionSelection,
+  CreateCampaignRequest,
+  UpdateCampaignRequest,
+  BulkPostingListParams,
+  ScheduledContent,
+} from './services/bulk-posting.service'
 
 // Export toast utilities
 export { toast } from '../toast'

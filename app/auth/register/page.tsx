@@ -67,6 +67,7 @@ export default function RegisterPage() {
           }
         }
       } catch (error) {
+        console.error("Failed to fetch auth settings on register page:", error)
       }
     }
 
@@ -82,7 +83,7 @@ export default function RegisterPage() {
           }
         }
       } catch (error) {
-        // Silently fail - use default URLs
+        console.error("Failed to fetch general settings (terms/privacy URLs):", error)
       }
     }
 

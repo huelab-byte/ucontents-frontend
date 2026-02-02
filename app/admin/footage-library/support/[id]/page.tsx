@@ -150,6 +150,8 @@ function TicketDetailContent() {
           setAdminUsers(response.data)
         }
       } catch (error) {
+        console.error("Failed to fetch admin users:", error)
+        toast.error("Failed to load admin users")
       }
     }
     fetchAdminUsers()

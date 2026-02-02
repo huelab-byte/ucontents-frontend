@@ -179,6 +179,8 @@ export default function AuthSettingsPage() {
       setCopiedUrl(provider)
       setTimeout(() => setCopiedUrl(null), 2000)
     } catch (error) {
+      console.error("Failed to copy to clipboard:", error)
+      toast.error("Failed to copy to clipboard")
     }
   }
 
@@ -247,6 +249,8 @@ export default function AuthSettingsPage() {
         setRefreshExpiry(data.token?.refresh_expiry ?? 43200)
       }
     } catch (error) {
+      console.error("Failed to load auth settings:", error)
+      toast.error("Failed to load auth settings")
     } finally {
       setLoading(false)
     }

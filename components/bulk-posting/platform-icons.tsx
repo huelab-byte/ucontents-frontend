@@ -3,13 +3,14 @@
 import * as React from "react"
 import { FaFacebook, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa"
 import { cn } from "@/lib/utils"
-import type { BulkPostingItem } from "./types"
+import type { ConnectedToPlatforms } from "./types"
 
 interface PlatformIconsProps {
-  platforms: BulkPostingItem["connectedTo"]
+  platforms?: ConnectedToPlatforms | null
 }
 
 export function PlatformIcons({ platforms }: PlatformIconsProps) {
+  const safe = platforms ?? {}
   const platformsConfig = [
     { key: "facebook" as const, label: "Facebook", color: "#1877F2", icon: FaFacebook },
     { key: "instagram" as const, label: "Instagram", color: "#E4405F", icon: FaInstagram },
@@ -26,9 +27,9 @@ export function PlatformIcons({ platforms }: PlatformIconsProps) {
             key={platform.key}
             className={cn(
               "size-6 rounded-full flex items-center justify-center transition-opacity",
-              platforms[platform.key] ? "opacity-100" : "opacity-30"
+              safe[platform.key] ? "opacity-100" : "opacity-30"
             )}
-            style={{ backgroundColor: platforms[platform.key] ? platform.color : "#9CA3AF" }}
+            style={{ backgroundColor: safe[platform.key] ? platform.color : "#9CA3AF" }}
             title={platform.label}
           >
             <IconComponent className="size-4 text-white" />

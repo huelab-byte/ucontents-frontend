@@ -10,7 +10,7 @@ export default function CustomerLayout({
   children: React.ReactNode
 }) {
   return (
-    <RouteGuard allowedRoles={["customer"]}>
+    <RouteGuard allowedRoles={["customer", "admin", "super_admin"]}>
       <NotificationsProvider>
         {children}
       </NotificationsProvider>

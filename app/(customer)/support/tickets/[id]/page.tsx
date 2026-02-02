@@ -556,11 +556,13 @@ function TicketDetailContent() {
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}>
-                          <p className={`text-sm whitespace-pre-wrap ${isCurrentUser ? "text-primary-foreground" : ""}`}>
-                            {msg.message}
-                          </p>
+                          {msg.message && (
+                            <p className={`text-sm whitespace-pre-wrap ${isCurrentUser ? "text-primary-foreground" : ""}`}>
+                              {msg.message}
+                            </p>
+                          )}
                           {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="mt-3 space-y-2 border-t pt-2 border-current/20">
+                            <div className={`space-y-2 ${msg.message ? "mt-3 border-t pt-2 border-current/20" : ""}`}>
                               {msg.attachments.map((attachment) => {
                                 const fileType = getFileType(attachment.storage_file.mime_type, attachment.storage_file.original_name)
                                 
@@ -668,7 +670,7 @@ function TicketDetailContent() {
             {/* Reply Form */}
             {ticket.status !== "closed" && ticket.status !== "resolved" ? (
               <Card>
-                <CardContent className="pt-6">
+                <CardContent className="pt-0">
                   <div className="space-y-4">
                     <Textarea
                       placeholder="Type your reply... (Press Enter to send, Shift+Enter for new line)"
@@ -699,12 +701,11 @@ function TicketDetailContent() {
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
+                          size="icon"
                           disabled={isUploading}
                           onClick={() => fileInputRef.current?.click()}
                         >
-                          <HugeiconsIcon icon={Paperclip} className="size-4 mr-2" />
-                          {isUploading ? "Uploading..." : "Attach Files"}
+                          <HugeiconsIcon icon={Paperclip} className="size-4" />
                         </Button>
                         {fileUploads.length > 0 && (
                           <div className="flex flex-wrap gap-2">
@@ -745,7 +746,7 @@ function TicketDetailContent() {
               </Card>
             ) : (
               <Card className="bg-muted/50">
-                <CardContent className="pt-6">
+                <CardContent className="pt-0">
                   <div className="text-center text-muted-foreground py-4">
                     <p className="font-medium">This ticket has been {ticket.status}</p>
                     <p className="text-sm mt-1">You cannot send new messages to a {ticket.status} ticket.</p>

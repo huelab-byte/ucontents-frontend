@@ -55,10 +55,13 @@ export interface PromptTemplate {
   prompt: string
 }
 
+export type ContentSourceType = "prompt" | "frame_extract" | "video_title"
+
 export interface PromptSettings {
   templateId: string | null
   customPrompt: string
   contentFromFrameExtract: boolean
+  contentSourceType: ContentSourceType | null
 }
 
 export interface ContentMetadata {

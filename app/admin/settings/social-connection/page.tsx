@@ -29,7 +29,7 @@ export default function SocialConnectionSettingsPage() {
   const [error, setError] = React.useState<string | null>(null)
 
   // Permission check
-  if (!hasPermission("manage_social_providers")) {
+  if (!hasPermission("manage_social_connection_providers")) {
     return (
       <AdminDashboardLayout>
         <div className="flex items-center justify-center h-64">

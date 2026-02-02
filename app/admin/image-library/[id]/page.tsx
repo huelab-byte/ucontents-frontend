@@ -15,6 +15,7 @@ import { SelectionBar } from "@/components/image-library/detail/selection-bar"
 import type { ImageClip, Library } from "@/components/image-library/types"
 import { imageLibraryService, type Image as ImageType, type ImageFolder, type UserWithUploadCount } from "@/lib/api/services/image-library.service"
 import { toast } from "@/lib/api"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { UserFilter } from "@/components/shared/user-filter"
 
 export default function ImageLibraryDetailPage() {
@@ -27,6 +28,7 @@ export default function ImageLibraryDetailPage() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false)
   const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null)
   const [usersWithUploads, setUsersWithUploads] = React.useState<UserWithUploadCount[]>([])
   const itemsPerPage = 8
@@ -191,7 +193,13 @@ export default function ImageLibraryDetailPage() {
     }
   }
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    if (selectedClips.size > 0) {
+      setIsBulkDeleteOpen(true)
+    }
+  }
+
+  const confirmDeleteSelected = async () => {
     const selectedIds = Array.from(selectedClips)
     const numericIds = selectedIds
       .map((id) => Number(id))
@@ -311,6 +319,15 @@ export default function ImageLibraryDetailPage() {
           onSelectAll={handleSelectAll}
           onDelete={handleDeleteSelected}
           onClear={() => setSelectedClips(new Set())}
+        />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <DeleteConfirmDialog
+          open={isBulkDeleteOpen}
+          onOpenChange={setIsBulkDeleteOpen}
+          title="Delete Selected Images"
+          description={`Are you sure you want to delete ${selectedClips.size} selected image${selectedClips.size > 1 ? 's' : ''}? This action cannot be undone.`}
+          onConfirm={confirmDeleteSelected}
         />
       </div>
     </AdminDashboardLayout>

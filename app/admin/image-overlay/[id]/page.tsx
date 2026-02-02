@@ -18,6 +18,7 @@ import {
 } from "@/components/image-overlay"
 import { usePermission } from "@/lib/hooks/use-permission"
 import { imageOverlayService, type ImageOverlay, type ImageOverlayFolder, type ImageOverlayUserWithUploadCount, toast } from "@/lib/api"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { UserFilter } from "@/components/shared/user-filter"
 
 export default function ImageOverlayDetailPage() {
@@ -31,6 +32,7 @@ export default function ImageOverlayDetailPage() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false)
   const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null)
   const [usersWithUploads, setUsersWithUploads] = React.useState<ImageOverlayUserWithUploadCount[]>([])
   const itemsPerPage = 8
@@ -201,7 +203,13 @@ export default function ImageOverlayDetailPage() {
     }
   }
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    if (selectedClips.size > 0) {
+      setIsBulkDeleteOpen(true)
+    }
+  }
+
+  const confirmDeleteSelected = async () => {
     const selectedIds = Array.from(selectedClips)
     const numericIds = selectedIds
       .map((id) => Number(id))
@@ -332,6 +340,15 @@ export default function ImageOverlayDetailPage() {
           onSelectAll={handleSelectAll}
           onDelete={handleDeleteSelected}
           onClear={() => setSelectedClips(new Set())}
+        />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <DeleteConfirmDialog
+          open={isBulkDeleteOpen}
+          onOpenChange={setIsBulkDeleteOpen}
+          title="Delete Selected Image Overlays"
+          description={`Are you sure you want to delete ${selectedClips.size} selected image overlay${selectedClips.size > 1 ? 's' : ''}? This action cannot be undone.`}
+          onConfirm={confirmDeleteSelected}
         />
       </div>
     </AdminDashboardLayout>

@@ -23,25 +23,35 @@ export interface CaptionTemplate {
   name: string
   font: string
   fontSize: number
+  fontWeight?: FontWeight
   fontColor: string
   outlineColor: string
   outlineSize: number
-  position: "top" | "center" | "bottom" | "instagram"
+  position: "top" | "center" | "bottom"
+  positionOffset?: number
   wordsPerCaption: number
   wordHighlighting: boolean
   highlightColor: string
   highlightStyle: "text" | "background"
   backgroundOpacity: number
+  enableAlternatingLoop?: boolean
+  loopCount?: number
 }
+
+export type FontWeight = "regular" | "bold" | "italic" | "bold_italic" | "black"
 
 export interface CaptionSettings {
   templateId: string | null
+  enableVideoCaption: boolean
   font: string
   fontSize: number
+  fontWeight: FontWeight
   fontColor: string
+  outlineEnabled: boolean
   outlineColor: string
   outlineSize: number
-  position: "top" | "center" | "bottom" | "instagram"
+  position: "top" | "center" | "bottom"
+  positionOffset: number
   wordsPerCaption: number
   wordHighlighting: boolean
   highlightColor: string
@@ -57,10 +67,17 @@ export interface PromptTemplate {
   prompt: string
 }
 
+export type ContentSourceType = "prompt" | "frame_extract" | "video_title"
+
 export interface PromptSettings {
   templateId: string | null
   customPrompt: string
   contentFromFrameExtract: boolean
+  contentSourceType: ContentSourceType | null
+  headingLength: number
+  headingEmoji: boolean
+  postCaptionLength: number
+  hashtagsCount: number
 }
 
 export interface ContentMetadata {

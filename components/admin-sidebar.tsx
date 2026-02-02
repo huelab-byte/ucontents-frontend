@@ -161,6 +161,14 @@ const adminMenuItems: MenuItem[] = [
   },
 
   {
+    title: "Plans",
+    icon: CreditCardIcon,
+    url: "/admin/plans",
+    permissions: ["view_plans", "manage_plans"],
+    items: [],
+  },
+
+  {
     title: "User Management",
     icon: UserGroupIcon,
     url: "",
@@ -572,6 +580,21 @@ export function AdminSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooter className="pb-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="View customer panel"
+              onClick={(e) => {
+                e.preventDefault()
+                router.push("/dashboard")
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <HugeiconsIcon icon={DashboardSpeed01Icon} strokeWidth={1.5} className="shrink-0 size-3.5" />
+              <span className="truncate whitespace-nowrap min-w-0 flex-1">View customer panel</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <NavUser 
           user={{ 
             name: user?.name || "Admin", 

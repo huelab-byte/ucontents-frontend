@@ -14,57 +14,152 @@ import {
   ComboboxChipsInput,
   useComboboxAnchor,
 } from "@/components/ui/combobox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { HelpCircleIcon, ArrowUp01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
-import { PlatformConnectionButtons } from "./platform-connection-buttons"
-import { contentSources } from "./constants"
-import type { BulkPostingItem } from "./types"
+import { Cancel01Icon, FileUploadIcon, Delete02Icon, File02Icon } from "@hugeicons/core-free-icons"
+import { ConnectionSelector } from "./connection-selector"
+import { contentSourceTypeOptions } from "./constants"
+import type { ContentSourceType, ConnectionSelection } from "./types"
+import type { SocialChannel, SocialConnectionGroup } from "@/lib/api"
+import { bulkPostingService } from "@/lib/api/services/bulk-posting.service"
+import { cn } from "@/lib/utils"
+import type { AutoPostingInterval } from "@/components/manual-posting/manual-posting-form"
+import { Download04Icon } from "@hugeicons/core-free-icons"
+
+const SCHEDULE_CONDITION_OPTIONS: { value: AutoPostingInterval; label: string }[] = [
+  { value: "minute", label: "Minute" },
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+]
 
 interface BulkPostingFormProps {
   brandName: string
   projectName: string
+  contentSourceType: ContentSourceType | ""
   contentSource: string[]
+  csvFile: File | null
   brandLogo: string
   logoPreview: string
-  connectedTo: BulkPostingItem["connectedTo"]
+  connections: ConnectionSelection
+  channels: SocialChannel[]
+  groups: SocialConnectionGroup[]
+  mediaFolders?: { id: number; name: string }[] | string[]
+  isLoadingConnections?: boolean
   dailyAutoPosting: number
+  autoPostingInterval: AutoPostingInterval
   dailyRepublishEnabled: boolean
   dailyRepublish: number
+  dailyRepublishInterval: AutoPostingInterval
   onBrandNameChange: (value: string) => void
   onProjectNameChange: (value: string) => void
+  onContentSourceTypeChange: (value: ContentSourceType) => void
   onContentSourceChange: (value: string[]) => void
+  onCsvFileChange: (file: File | null) => void
   onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onRemoveLogo: () => void
-  onPlatformConnection: (platform: keyof BulkPostingItem["connectedTo"]) => void
+  onConnectionsChange: (connections: ConnectionSelection) => void
   onDailyAutoPostingChange: (value: number) => void
+  onAutoPostingIntervalChange: (value: AutoPostingInterval) => void
   onDailyRepublishEnabledChange: (value: boolean) => void
   onDailyRepublishChange: (value: number) => void
+  onDailyRepublishIntervalChange: (value: AutoPostingInterval) => void
   logoInputId?: string
 }
 
 export function BulkPostingForm({
   brandName,
   projectName,
+  contentSourceType,
   contentSource,
+  csvFile,
   brandLogo,
   logoPreview,
-  connectedTo,
+  connections,
+  channels,
+  groups,
+  mediaFolders: mediaFoldersProp,
+  isLoadingConnections,
   dailyAutoPosting,
+  autoPostingInterval,
   dailyRepublishEnabled,
   dailyRepublish,
+  dailyRepublishInterval,
   onBrandNameChange,
   onProjectNameChange,
+  onContentSourceTypeChange,
   onContentSourceChange,
+  onCsvFileChange,
   onImageChange,
   onRemoveLogo,
-  onPlatformConnection,
+  onConnectionsChange,
   onDailyAutoPostingChange,
+  onAutoPostingIntervalChange,
   onDailyRepublishEnabledChange,
   onDailyRepublishChange,
+  onDailyRepublishIntervalChange,
   logoInputId = "brand-logo-upload",
 }: BulkPostingFormProps) {
   const anchorRef = useComboboxAnchor()
+  // When Media Upload is selected, only show real MediaUpload folders from API—never demo data
+  const folderItems = React.useMemo(() => {
+    if (!mediaFoldersProp || !Array.isArray(mediaFoldersProp)) return []
+    if (mediaFoldersProp.length === 0) return []
+    const first = mediaFoldersProp[0]
+    if (typeof first === "object" && first !== null && "id" in first && "name" in first) {
+      return mediaFoldersProp as { id: number; name: string }[]
+    }
+    return (mediaFoldersProp as string[]).map((s, i) => ({ id: i, name: String(s) }))
+  }, [mediaFoldersProp])
+  const csvInputRef = React.useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = React.useState(false)
+
+  const handleCsvFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type === "text/csv") {
+      onCsvFileChange(file)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file && file.type === "text/csv") {
+      onCsvFileChange(file)
+    }
+  }
+
+  const handleRemoveCsvFile = () => {
+    onCsvFileChange(null)
+    if (csvInputRef.current) {
+      csvInputRef.current.value = ""
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   return (
     <FieldGroup className="gap-4">
@@ -100,159 +195,319 @@ export function BulkPostingForm({
             </FieldContent>
           </Field>
         </div>
-
-        <Field>
-          <FieldLabel>
-            <Label className="flex items-center gap-2">
-              Brand Logo (Optional)
-              <span title="Upload a picture/image file for your brand logo">
-                <HugeiconsIcon icon={HelpCircleIcon} className="size-4 text-muted-foreground" />
-              </span>
-            </Label>
-          </FieldLabel>
-          <FieldContent>
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3 items-start">
-                <div className="flex-1 min-w-0 w-full">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={onImageChange}
-                    className="hidden"
-                    id={logoInputId}
-                  />
-                  <label
-                    htmlFor={logoInputId}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-border rounded-lg bg-background hover:bg-muted cursor-pointer transition-colors"
-                  >
-                    <HugeiconsIcon icon={ArrowUp01Icon} className="size-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium">Choose File</span>
-                  </label>
-                  <FieldDescription className="mt-1.5">
-                    Upload a picture/image file for your brand logo
-                  </FieldDescription>
-                </div>
-                {logoPreview && (
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <img
-                      src={logoPreview}
-                      alt="Brand logo preview"
-                      className="size-16 rounded-full object-cover border border-border"
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={onRemoveLogo}>
-                      Remove
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </FieldContent>
-        </Field>
       </div>
 
-      <Field>
-        <FieldLabel>
-          <Label>Content Source</Label>
-        </FieldLabel>
-        <FieldContent>
-          <Combobox items={contentSources} multiple value={contentSource} onValueChange={(value) => onContentSourceChange(value || [])}>
-            <ComboboxChips ref={anchorRef} className="w-full">
-              {contentSource.map((source) => (
-                <div
-                  key={source}
-                  className="bg-muted text-foreground flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-xs font-medium whitespace-nowrap"
-                >
-                  <span>{source}</span>
-                  <button
-                    type="button"
-                    onClick={() => onContentSourceChange(contentSource.filter((s) => s !== source))}
-                    className="ml-1 opacity-50 hover:opacity-100 rounded-sm hover:bg-muted-foreground/20 p-0.5"
-                    aria-label={`Remove ${source}`}
-                  >
-                    <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-3" />
-                  </button>
-                </div>
-              ))}
-              <ComboboxChipsInput
-                placeholder={contentSource.length === 0 ? "Search and select content sources" : "Add more content sources..."}
-              />
-            </ComboboxChips>
-            <ComboboxContent anchor={anchorRef}>
-              <ComboboxEmpty>No content sources found.</ComboboxEmpty>
-              <ComboboxList>
-                {(item) => (
-                  <ComboboxItem key={item} value={item}>
-                    {item}
-                  </ComboboxItem>
-                )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel>
-          <Label>Connected To</Label>
-        </FieldLabel>
-        <FieldContent>
-          <PlatformConnectionButtons connectedTo={connectedTo} onPlatformConnection={onPlatformConnection} />
-        </FieldContent>
-      </Field>
-
-      {/* Posting Settings Section */}
+      {/* Content Source Section */}
       <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
-        <div className="text-xs font-medium mb-3">Posting Settings</div>
-        <div className="space-y-4">
-          <Field orientation="horizontal">
+        <div className="text-xs font-medium mb-3">Content Source</div>
+        
+        {/* Content Source Type Selection */}
+        <Field orientation="vertical">
+          <FieldLabel>
+            <Label>Import Method</Label>
+          </FieldLabel>
+          <FieldContent>
+            <Select
+              value={contentSourceType}
+              onValueChange={(value) => onContentSourceTypeChange(value as ContentSourceType)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select option">
+                  {contentSourceType
+                    ? contentSourceTypeOptions.find((opt) => opt.value === contentSourceType)?.label
+                    : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {contentSourceTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldContent>
+        </Field>
+
+        {/* Conditional Content Based on Selection */}
+        {contentSourceType === "csv_file" && (
+          <Field orientation="vertical">
             <FieldLabel>
-              <Label>Daily Auto Posting</Label>
+              <Label>Upload CSV File</Label>
             </FieldLabel>
             <FieldContent>
-              <Input
-                type="number"
-                value={dailyAutoPosting}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value) || 1
-                  onDailyAutoPostingChange(Math.max(1, value))
-                }}
-                min={1}
-                className="w-24"
-                placeholder="Enter count"
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCsvFileSelect}
+                className="hidden"
+                id="csv-file-upload"
               />
+              
+              {!csvFile ? (
+                <div
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer",
+                    isDragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/50 hover:bg-muted/50"
+                  )}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => csvInputRef.current?.click()}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                    <HugeiconsIcon icon={FileUploadIcon} className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium">
+                      Drop your CSV file here or{" "}
+                      <span className="text-primary">browse</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Supports CSV files only
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <HugeiconsIcon icon={File02Icon} className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{csvFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(csvFile.size)}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveCsvFile}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
+                    <span className="sr-only">Remove file</span>
+                  </Button>
+                </div>
+              )}
             </FieldContent>
+            <FieldDescription className="flex items-center justify-between gap-2 flex-wrap">
+              <span>Upload a CSV file with your content data. The file should contain columns for post content, media URLs, and scheduling information.</span>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-primary"
+                onClick={() => bulkPostingService.downloadSampleCsv()}
+              >
+                <HugeiconsIcon icon={Download04Icon} className="h-4 w-4 mr-1" />
+                Download Sample CSV
+              </Button>
+            </FieldDescription>
           </Field>
-          <Field orientation="horizontal">
+        )}
+
+        {contentSourceType === "media_upload" && (
+          <Field orientation="vertical">
             <FieldLabel>
-              <Label>Daily Republish</Label>
+              <Label>Select Folders</Label>
             </FieldLabel>
             <FieldContent>
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={dailyRepublishEnabled}
-                    onChange={(e) => onDailyRepublishEnabledChange(e.target.checked)}
-                    className="rounded border-border"
+              <Combobox
+                items={folderItems}
+                multiple
+                value={contentSource}
+                onValueChange={(value) => onContentSourceChange(value || [])}
+                getItemValue={(item) => typeof item === 'object' && item && 'id' in item ? String((item as { id: number; name: string }).id) : String(item)}
+                getItemLabel={(item) => typeof item === 'object' && item && 'name' in item ? (item as { id: number; name: string }).name : String(item)}
+              >
+                <ComboboxChips ref={anchorRef} className="w-full">
+                  {contentSource.map((source) => {
+                    const folder = folderItems.find((f) => (typeof f === 'object' && f && 'id' in f ? String((f as { id: number; name: string }).id) : f) === source)
+                    const label = typeof folder === 'object' && folder && 'name' in folder ? (folder as { id: number; name: string }).name : source
+                    return (
+                    <div
+                      key={source}
+                      className="bg-muted text-foreground flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-xs font-medium whitespace-nowrap"
+                    >
+                      <span>{label}</span>
+                      <button
+                        type="button"
+                        onClick={() => onContentSourceChange(contentSource.filter((s) => s !== source))}
+                        className="ml-1 opacity-50 hover:opacity-100 rounded-sm hover:bg-muted-foreground/20 p-0.5"
+                        aria-label={`Remove ${label}`}
+                      >
+                        <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-3" />
+                      </button>
+                    </div>
+                  )})}
+                  <ComboboxChipsInput
+                    placeholder={contentSource.length === 0 ? "Search and select folders" : "Add more folders..."}
                   />
-                  <span className="text-sm">Enable daily republish</span>
-                </Label>
-                {dailyRepublishEnabled && (
+                </ComboboxChips>
+                <ComboboxContent anchor={anchorRef}>
+                  <ComboboxEmpty>No folders found.</ComboboxEmpty>
+                  <ComboboxList items={folderItems}>
+                    {(item) => {
+                      const id = typeof item === 'object' && item && 'id' in item ? String((item as { id: number; name: string }).id) : String(item)
+                      const name = typeof item === 'object' && item && 'name' in item ? (item as { id: number; name: string }).name : String(item)
+                      return (
+                        <ComboboxItem key={id} value={id}>
+                          {name}
+                        </ComboboxItem>
+                      )
+                    }}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FieldContent>
+            <FieldDescription>
+              Select one or more folders from your media library to source content for posting.
+            </FieldDescription>
+          </Field>
+        )}
+      </div>
+
+      <Field orientation="vertical">
+        <FieldLabel>
+          <Label>Connections</Label>
+        </FieldLabel>
+        <FieldContent>
+          <ConnectionSelector
+            channels={channels}
+            groups={groups}
+            selectedConnections={connections}
+            onSelectionChange={onConnectionsChange}
+            isLoading={isLoadingConnections}
+          />
+        </FieldContent>
+        <FieldDescription>
+          Select channels or groups to publish content to. You can select multiple connections.
+        </FieldDescription>
+      </Field>
+
+      {/* Post Schedule & Re-Post Section */}
+      <div className="space-y-6 p-4 border border-border rounded-lg bg-muted/30">
+        {/* Post Schedule */}
+        <div className="space-y-4">
+          <div className="text-xs font-medium">Post Schedule</div>
+          <div className="flex flex-nowrap items-center gap-4">
+            <Field orientation="horizontal">
+              <FieldLabel>
+                <Label>Condition</Label>
+              </FieldLabel>
+              <FieldContent>
+                <Select
+                  value={autoPostingInterval}
+                  onValueChange={(value) => onAutoPostingIntervalChange(value as AutoPostingInterval)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Option">
+                      {autoPostingInterval
+                        ? SCHEDULE_CONDITION_OPTIONS.find((opt) => opt.value === autoPostingInterval)?.label
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCHEDULE_CONDITION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel>
+                <Label>Interval</Label>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  value={dailyAutoPosting}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1
+                    onDailyAutoPostingChange(Math.max(1, value))
+                  }}
+                  min={1}
+                  className="w-full"
+                  placeholder="0"
+                  aria-label="Post schedule interval"
+                />
+              </FieldContent>
+            </Field>
+          </div>
+        </div>
+
+        {/* Re-Post */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium">Re-Post</div>
+            <Label className="flex items-center gap-2 cursor-pointer text-xs font-normal">
+              <input
+                type="checkbox"
+                checked={dailyRepublishEnabled}
+                onChange={(e) => onDailyRepublishEnabledChange(e.target.checked)}
+                className="rounded border-border"
+              />
+              <span>Enable</span>
+            </Label>
+          </div>
+          {dailyRepublishEnabled && (
+            <div className="flex flex-nowrap items-center gap-4">
+              <Field orientation="horizontal">
+                <FieldLabel>
+                  <Label>Condition</Label>
+                </FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={dailyRepublishInterval}
+                    onValueChange={(value) => onDailyRepublishIntervalChange(value as AutoPostingInterval)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Option">
+                        {dailyRepublishInterval
+                          ? SCHEDULE_CONDITION_OPTIONS.find((opt) => opt.value === dailyRepublishInterval)?.label
+                          : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SCHEDULE_CONDITION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+              <Field orientation="horizontal">
+                <FieldLabel>
+                  <Label>Interval</Label>
+                </FieldLabel>
+                <FieldContent>
                   <Input
                     type="number"
                     value={dailyRepublish}
                     onChange={(e) => {
-                      const value = parseInt(e.target.value) || 1
-                      onDailyRepublishChange(Math.max(1, value))
+                      const value = parseInt(e.target.value) || 0
+                      onDailyRepublishChange(Math.max(0, value))
                     }}
-                    min={1}
-                    className="w-24"
-                    placeholder="Enter count"
+                    min={0}
+                    className="w-full"
+                    placeholder="0"
+                    aria-label="Re post interval"
                   />
-                )}
-              </div>
-            </FieldContent>
-          </Field>
+                </FieldContent>
+              </Field>
+            </div>
+          )}
         </div>
       </div>
     </FieldGroup>

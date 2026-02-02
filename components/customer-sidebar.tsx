@@ -29,7 +29,6 @@ import {
   DocumentCodeIcon,
   File01Icon,
   Database02Icon,
-  CodeIcon,
   Video01Icon,
   Settings01Icon,
   LockKeyIcon,
@@ -46,9 +45,25 @@ import {
   ArrowUp01Icon,
   Link01Icon,
   Ticket01Icon,
+  MusicNote01Icon,
+  Image01Icon,
+  GlobalIcon,
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/auth-context"
+import { usePermission } from "@/lib/hooks/use-permission"
 import { NavUser } from "@/components/nav-user"
+
+// Two menus like admin: Library and Overlay (permission per item; section hidden if no permissions)
+const libraryMenuItems: { title: string; url: string; icon: any; permission: string }[] = [
+  { title: "Footage Library", url: "/library/footage", icon: Video01Icon, permission: "use_footage_library" },
+  { title: "Audio Library", url: "/library/audio", icon: MusicNote01Icon, permission: "use_audio_library" },
+  { title: "Image Library", url: "/library/images", icon: Image01Icon, permission: "use_image_library" },
+]
+const overlayMenuItems: { title: string; url: string; icon: any; permission: string }[] = [
+  { title: "Video Overlay", url: "/library/video-overlays", icon: Video01Icon, permission: "use_video_overlay" },
+  { title: "BGM Library", url: "/library/bgm", icon: MusicNote01Icon, permission: "use_bgm_library" },
+  { title: "Image Overlay", url: "/library/image-overlays", icon: Image01Icon, permission: "use_image_overlay" },
+]
 
 // Customer menu items (no admin features)
 const customerMenuItems = [
@@ -56,7 +71,7 @@ const customerMenuItems = [
     title: "Dashboard",
     icon: DashboardSpeed01Icon,
     url: "/dashboard",
-    items: [],
+    items: [] as { title: string; url: string; icon: any }[],
   },
   {
     title: "Connection",
@@ -65,7 +80,13 @@ const customerMenuItems = [
     items: [],
   },
   {
-    title: "Social Automation",
+    title: "Proxy Setup",
+    icon: GlobalIcon,
+    url: "/proxy-setup",
+    items: [],
+  },
+  {
+    title: "Automation",
     icon: MachineRobotIcon,
     url: undefined,
     items: [
@@ -87,36 +108,28 @@ const customerMenuItems = [
     url: undefined,
     items: [
       {
-        title: "Content Sources",
-        url: "/content-generation/content-sources",
+        title: "Media Upload",
+        url: "/content-generation/media-upload",
         icon: Database02Icon,
       },
-      {
-        title: "Topic to Video",
-        url: "/content-generation/topic-to-video",
-        icon: File01Icon,
-      },
-      {
-        title: "Audio to Video",
-        url: "/content-generation/audio-to-video",
-        icon: Video01Icon,
-      },
-      {
-        title: "Image Contents",
-        url: "/content-generation/image-contents",
-        icon: File01Icon,
-      },
-      {
-        title: "Text Contents",
-        url: "/content-generation/text-contents",
-        icon: DocumentCodeIcon,
-      },
-      {
-        title: "Playground",
-        url: "/content-generation/playground",
-        icon: CodeIcon,
-      },
+      // {
+      //   title: "Topic to Video",
+      //   url: "/content-generation/topic-to-video",
+      //   icon: File01Icon,
+      // },
     ],
+  },
+  {
+    title: "Library",
+    icon: Book01Icon,
+    url: undefined,
+    items: [] as { title: string; url: string; icon: any }[], // Populated from libraryMenuItems by permission
+  },
+  {
+    title: "Overlay",
+    icon: Image01Icon,
+    url: undefined,
+    items: [] as { title: string; url: string; icon: any }[], // Populated from overlayMenuItems by permission
   },
   {
     title: "Templates",
@@ -192,33 +205,49 @@ export function CustomerSidebar() {
   const router = useRouter()
   const { state, isMobile } = useSidebar()
   const { user } = useAuth()
+  const { hasPermission } = usePermission()
   const [openItems, setOpenItems] = React.useState<Record<string, boolean>>({})
+
+  const libraryItems = React.useMemo(
+    () => libraryMenuItems.filter((item) => hasPermission(item.permission)).map(({ title, url, icon }) => ({ title, url, icon })),
+    [hasPermission]
+  )
+  const overlayItems = React.useMemo(
+    () => overlayMenuItems.filter((item) => hasPermission(item.permission)).map(({ title, url, icon }) => ({ title, url, icon })),
+    [hasPermission]
+  )
+
+  const effectiveMenuItems = React.useMemo(() => {
+    return customerMenuItems.map((item) => {
+      if (item.title === "Library") return { ...item, items: libraryItems }
+      if (item.title === "Overlay") return { ...item, items: overlayItems }
+      return item
+    }).filter((item) => {
+      if (item.title === "Library" && libraryItems.length === 0) return false
+      if (item.title === "Overlay" && overlayItems.length === 0) return false
+      return true
+    })
+  }, [libraryItems, overlayItems])
 
   React.useEffect(() => {
     // Calculate which items should be open based on current pathname
     const initialOpen: Record<string, boolean> = {}
-    customerMenuItems.forEach((item) => {
+    effectiveMenuItems.forEach((item) => {
       if (item.items.length > 0) {
-        const isOpen = pathname?.startsWith(item.url || `/${item.title.toLowerCase().replace(/\s+/g, "-")}`)
-        if (isOpen) {
-          initialOpen[item.title] = true
-        }
+        const hasActive = item.items.some((subItem) => pathname === subItem.url || (subItem.url && pathname?.startsWith(subItem.url + "/")))
+        if (hasActive) initialOpen[item.title] = true
       }
     })
     customerConfigItems.forEach((configItem) => {
       configItem.items.forEach((item) => {
         if (item.subItems) {
-          // Check if any subItem URL matches the current pathname
           const isOpen = item.subItems.some((subItem) => pathname?.startsWith(subItem.url))
-          if (isOpen) {
-            initialOpen[item.title] = true
-          }
+          if (isOpen) initialOpen[item.title] = true
         }
       })
     })
-    
     setOpenItems(initialOpen)
-  }, [pathname])
+  }, [pathname, effectiveMenuItems])
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -232,11 +261,13 @@ export function CustomerSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {customerMenuItems.map((item) => {
-          const isItemOpen = openItems[item.title] ?? pathname?.startsWith(item.url || `/${item.title.toLowerCase().replace(/\s+/g, "-")}`)
+        {effectiveMenuItems.map((item) => {
+          const effectiveItems = item.items
+          const hasActiveSubItem = effectiveItems.some((subItem) => pathname === subItem.url || (subItem.url && pathname?.startsWith(subItem.url + "/")))
+          const isItemOpen = openItems[item.title] ?? hasActiveSubItem ?? pathname?.startsWith(item.url || `/library`)
           return (
             <SidebarGroup key={item.title}>
-              {item.items.length > 0 ? (
+              {effectiveItems.length > 0 ? (
                 <Collapsible
                   open={isItemOpen}
                   onOpenChange={(isOpen) => setOpenItems((prev: Record<string, boolean>) => ({ ...prev, [item.title]: isOpen }))}
@@ -262,7 +293,7 @@ export function CustomerSidebar() {
                       ) : (
                         <SidebarMenuButton
                           tooltip={item.title}
-                          isActive={pathname?.startsWith(`/${item.title.toLowerCase().replace(/\s+/g, "-")}`)}
+                          isActive={hasActiveSubItem}
                           className="flex-1"
                           onClick={(e) => {
                             e.preventDefault()
@@ -288,7 +319,7 @@ export function CustomerSidebar() {
                     </div>
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {item.items.map((subItem) => (
+                        {effectiveItems.map((subItem: { title: string; url?: string; icon: any }) => (
                           <SidebarMenuSubItem key={subItem.title}>
                             <SidebarMenuSubButton
                               isActive={!!(pathname === subItem.url || (subItem.url && pathname?.startsWith(subItem.url + "/")))}
@@ -428,6 +459,23 @@ export function CustomerSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooter className="pb-2">
+        {(user?.role === "admin" || user?.role === "super_admin") && (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Switch to admin panel"
+                onClick={(e) => {
+                  e.preventDefault()
+                  router.push("/admin/dashboard")
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} className="shrink-0 size-3.5" />
+                <span className="truncate whitespace-nowrap min-w-0 flex-1">Admin panel</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
         <NavUser 
           user={{ 
             name: user?.name || "Customer", 

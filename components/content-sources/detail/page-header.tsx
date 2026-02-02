@@ -22,7 +22,7 @@ export function PageHeader({ source, onBack }: PageHeaderProps) {
           className="h-7 w-7"
         >
           <HugeiconsIcon icon={ArrowLeft02Icon} className="size-3.5" />
-          <span className="sr-only">Back to Content Sources</span>
+          <span className="sr-only">Back to Media Upload</span>
         </Button>
         <div>
           <h1 className="text-xl font-bold">{source.name}</h1>

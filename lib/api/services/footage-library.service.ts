@@ -159,8 +159,23 @@ export const footageLibraryService = {
   },
 
   /**
-   * Customer: list footage
+   * Customer: list folders that have browse-visible (ready) footage (requires use_footage_library)
    */
+  async browseFolders(): Promise<ApiResponse<FootageFolder[]>> {
+    return apiClient.get('/v1/customer/footage-library/browse/folders')
+  },
+
+  /**
+   * Customer: browse shared footage (read-only; requires use_footage_library)
+   */
+  async browseFootage(params?: FootageListParams): Promise<ApiResponse<Footage[]>> {
+    return apiClient.get('/v1/customer/footage-library/browse', { params })
+  },
+
+  async getBrowseFootage(id: number): Promise<ApiResponse<Footage>> {
+    return apiClient.get(`/v1/customer/footage-library/browse/${id}`)
+  },
+
   async listFootage(params?: FootageListParams): Promise<ApiResponse<Footage[]>> {
     return apiClient.get('/v1/customer/footage-library/footage', { params })
   },

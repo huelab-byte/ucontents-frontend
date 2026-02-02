@@ -13,15 +13,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Field, FieldGroup, FieldLabel, FieldContent } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import type { ContentMetadata } from "./types"
 
 interface EditMetadataDialogProps {
@@ -38,30 +29,22 @@ export function EditMetadataDialog({
   const [youtubeHeadline, setYoutubeHeadline] = React.useState(metadata?.youtubeHeadline || "")
   const [postCaption, setPostCaption] = React.useState(metadata?.postCaption || "")
   const [hashtags, setHashtags] = React.useState(metadata?.hashtags || "")
-  const [videoUrl, setVideoUrl] = React.useState(metadata?.videoUrl || "")
-  const [status, setStatus] = React.useState<"draft" | "published" | "scheduled">(
-    metadata?.status || "draft"
-  )
 
   React.useEffect(() => {
     if (metadata) {
       setYoutubeHeadline(metadata.youtubeHeadline)
       setPostCaption(metadata.postCaption)
       setHashtags(metadata.hashtags)
-      setVideoUrl(metadata.videoUrl || "")
-      setStatus(metadata.status || "draft")
     }
   }, [metadata])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (metadata && youtubeHeadline.trim() && postCaption.trim()) {
+    if (metadata) {
       onUpdate(metadata.id, {
         youtubeHeadline: youtubeHeadline.trim(),
         postCaption: postCaption.trim(),
         hashtags: hashtags.trim(),
-        videoUrl: videoUrl.trim() || undefined,
-        status,
       })
       onClose()
     }
@@ -72,8 +55,6 @@ export function EditMetadataDialog({
       setYoutubeHeadline(metadata.youtubeHeadline)
       setPostCaption(metadata.postCaption)
       setHashtags(metadata.hashtags)
-      setVideoUrl(metadata.videoUrl || "")
-      setStatus(metadata.status || "draft")
     }
     onClose()
   }
@@ -81,78 +62,66 @@ export function EditMetadataDialog({
   if (!metadata) return null
 
   return (
-    <AlertDialog open={!!metadata} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <AlertDialog open={!!metadata} onOpenChange={(open) => !open && handleCancel()}>
+      <AlertDialogContent className="!max-w-3xl w-full mx-4" style={{ maxWidth: '768px' }}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Edit Content Metadata</AlertDialogTitle>
+          <AlertDialogTitle>Edit Content</AlertDialogTitle>
         </AlertDialogHeader>
+        
         <form onSubmit={handleSubmit}>
-          <FieldGroup className="gap-4">
-            <Field>
-              <FieldLabel>
-                <Label>YouTube Headline</Label>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  placeholder="Enter YouTube headline"
-                  value={youtubeHeadline}
-                  onChange={(e) => setYoutubeHeadline(e.target.value)}
-                  required
-                />
-              </FieldContent>
-            </Field>
+          <div className="space-y-4 mt-2">
+            {/* YouTube Headline */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">YouTube Headline</Label>
+              <Input
+                placeholder="Enter YouTube headline"
+                value={youtubeHeadline}
+                onChange={(e) => setYoutubeHeadline(e.target.value)}
+                className="text-sm"
+              />
+            </div>
 
-            <Field>
-              <FieldLabel>
-                <Label>Post Caption</Label>
-              </FieldLabel>
-              <FieldContent>
-                <Textarea
-                  placeholder="Enter post caption"
-                  value={postCaption}
-                  onChange={(e) => setPostCaption(e.target.value)}
-                  rows={4}
-                  required
-                />
-              </FieldContent>
-            </Field>
+            {/* Post Caption */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Post Caption</Label>
+              <Textarea
+                placeholder="Enter post caption"
+                value={postCaption}
+                onChange={(e) => setPostCaption(e.target.value)}
+                rows={5}
+                className="text-sm resize-none"
+              />
+            </div>
 
-            <Field>
-              <FieldLabel>
-                <Label>Video URL (Optional)</Label>
-              </FieldLabel>
-              <FieldContent>
-                <Input
-                  type="url"
-                  placeholder="https://example.com/video.mp4"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                />
-              </FieldContent>
-            </Field>
+            {/* Hashtags */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Hashtags</Label>
+              <Input
+                placeholder="#hashtag1 #hashtag2 #hashtag3"
+                value={hashtags}
+                onChange={(e) => setHashtags(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">Separate hashtags with spaces</p>
+            </div>
 
-            <Field>
-              <FieldLabel>
-                <Label>Status</Label>
-              </FieldLabel>
-              <FieldContent>
-                <Select value={status} onValueChange={(value) => setStatus((value || "draft") as typeof status)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="published">Ready to Publish</SelectItem>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-            </Field>
-          </FieldGroup>
+            {/* Video Preview (read-only) */}
+            {metadata.videoUrl && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Video Preview</Label>
+                <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
+                  <video
+                    src={metadata.videoUrl}
+                    controls
+                    className="w-full h-full"
+                    title="Video Preview"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
-          <AlertDialogFooter className="mt-6">
+          <AlertDialogFooter className="mt-4">
             <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
             <Button type="submit">Save Changes</Button>
           </AlertDialogFooter>

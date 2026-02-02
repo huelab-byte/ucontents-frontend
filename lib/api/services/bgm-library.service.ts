@@ -139,8 +139,23 @@ export const bgmLibraryService = {
   },
 
   /**
-   * Customer: list BGM
+   * Customer: list folders that have browse-visible (ready) BGM (requires use_bgm_library)
    */
+  async browseFolders(): Promise<ApiResponse<BgmFolder[]>> {
+    return apiClient.get('/v1/customer/bgm-library/browse/folders')
+  },
+
+  /**
+   * Customer: browse shared BGM (read-only; requires use_bgm_library)
+   */
+  async browseBgm(params?: BgmListParams): Promise<ApiResponse<Bgm[]>> {
+    return apiClient.get('/v1/customer/bgm-library/browse', { params })
+  },
+
+  async getBrowseBgm(id: number): Promise<ApiResponse<Bgm>> {
+    return apiClient.get(`/v1/customer/bgm-library/browse/${id}`)
+  },
+
   async listBgm(params?: BgmListParams): Promise<ApiResponse<Bgm[]>> {
     return apiClient.get('/v1/customer/bgm-library/bgm', { params })
   },

@@ -129,8 +129,23 @@ export const videoOverlayService = {
   },
 
   /**
-   * Customer: list video overlays
+   * Customer: list folders that have browse-visible (ready) video overlays (requires use_video_overlay)
    */
+  async browseFolders(): Promise<ApiResponse<VideoOverlayFolder[]>> {
+    return apiClient.get('/v1/customer/video-overlay/browse/folders')
+  },
+
+  /**
+   * Customer: browse shared video overlays (read-only; requires use_video_overlay)
+   */
+  async browseVideoOverlays(params?: VideoOverlayListParams): Promise<ApiResponse<VideoOverlay[]>> {
+    return apiClient.get('/v1/customer/video-overlay/browse', { params })
+  },
+
+  async getBrowseVideoOverlay(id: number): Promise<ApiResponse<VideoOverlay>> {
+    return apiClient.get(`/v1/customer/video-overlay/browse/${id}`)
+  },
+
   async listVideoOverlays(params?: VideoOverlayListParams): Promise<ApiResponse<VideoOverlay[]>> {
     return apiClient.get('/v1/customer/video-overlay/video-overlays', { params })
   },

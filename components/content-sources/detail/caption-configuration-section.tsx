@@ -15,8 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { EyeIcon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
+import { EyeIcon, ArrowDown01Icon, FloppyDiskIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Separator } from "@/components/ui/separator"
+import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import type { CaptionSettings, CaptionTemplate } from "./types"
 
@@ -28,6 +39,8 @@ interface CaptionConfigurationSectionProps {
   captionTemplates: CaptionTemplate[]
   availableFonts: string[]
   onPreviewClick: () => void
+  onSaveAsTemplate?: (name: string) => void
+  onDeleteTemplate?: (templateId: string) => void
 }
 
 export function CaptionConfigurationSection({
@@ -38,26 +51,44 @@ export function CaptionConfigurationSection({
   captionTemplates,
   availableFonts,
   onPreviewClick,
+  onSaveAsTemplate,
+  onDeleteTemplate,
 }: CaptionConfigurationSectionProps) {
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = React.useState(false)
+  const [templateName, setTemplateName] = React.useState("")
+
+  const handleSaveTemplate = () => {
+    if (templateName.trim() && onSaveAsTemplate) {
+      onSaveAsTemplate(templateName.trim())
+      setTemplateName("")
+      setIsSaveDialogOpen(false)
+    }
+  }
+
   const handleTemplateChange = (templateId: string | null) => {
     if (templateId) {
       const template = captionTemplates.find((t) => t.id === templateId)
       if (template) {
+        const outlineSize = template.outlineSize ?? 3
         onCaptionSettingsChange({
           templateId,
+          enableVideoCaption: captionSettings.enableVideoCaption,
           font: template.font,
           fontSize: template.fontSize,
+          fontWeight: template.fontWeight ?? "regular",
           fontColor: template.fontColor,
+          outlineEnabled: outlineSize > 0,
           outlineColor: template.outlineColor,
-          outlineSize: template.outlineSize,
-          position: template.position,
+          outlineSize,
+          position: (template.position === "instagram" ? "bottom" : template.position) as "top" | "center" | "bottom",
+          positionOffset: template.positionOffset ?? 30,
           wordsPerCaption: template.wordsPerCaption,
           wordHighlighting: template.wordHighlighting,
           highlightColor: template.highlightColor,
           highlightStyle: template.highlightStyle,
           backgroundOpacity: template.backgroundOpacity,
-          enableAlternatingLoop: captionSettings.enableAlternatingLoop,
-          loopCount: captionSettings.loopCount,
+          enableAlternatingLoop: template.enableAlternatingLoop ?? captionSettings.enableAlternatingLoop,
+          loopCount: template.loopCount ?? captionSettings.loopCount,
         })
       }
     } else {
@@ -83,289 +114,426 @@ export function CaptionConfigurationSection({
           <CardContent className="mb-[10px]">
             <form>
               <FieldGroup className="gap-3">
-                {/* Template Selector */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Caption Template</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Select
-                      value={captionSettings.templateId || ""}
-                      onValueChange={(value) => handleTemplateChange(value || null)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a template (optional)" />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={true}>
-                        <SelectGroup>
-                          <SelectItem value="">None (Custom Settings)</SelectItem>
-                          {captionTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      Select a saved preset template or configure custom settings below
-                    </p>
-                  </FieldContent>
-                </Field>
+                {/* Enable Video Caption checkbox */}
+                <div className="flex items-center justify-between gap-4">
+                  <Label className="text-xs shrink-0">Enable Video Caption</Label>
+                  <Checkbox
+                    id="enable-video-caption"
+                    checked={captionSettings.enableVideoCaption}
+                    onCheckedChange={(checked) =>
+                      onCaptionSettingsChange({
+                        ...captionSettings,
+                        enableVideoCaption: checked === true,
+                      })
+                    }
+                  />
+                </div>
 
-                {/* Subtitle Font */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Subtitle Font</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Select
-                      value={captionSettings.font}
-                      onValueChange={(value) =>
-                        onCaptionSettingsChange({ ...captionSettings, font: value || "" })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {availableFonts.map((font) => (
-                            <SelectItem key={font} value={font}>
-                              {font}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
+                {/* All caption-related settings - only shown when video caption is enabled */}
+                {captionSettings.enableVideoCaption && (
+                  <>
+                    {/* Template Selector */}
+                    <Field>
+                      <FieldLabel>
+                        <Label className="text-xs">Caption Template</Label>
+                      </FieldLabel>
+                      <FieldContent>
+                        <div className="flex items-center gap-1">
+                          <Select
+                            value={captionSettings.templateId || ""}
+                            onValueChange={(value) => handleTemplateChange(value || null)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select a template (optional)">
+                                {captionSettings.templateId
+                                  ? captionTemplates.find((t) => t.id === captionSettings.templateId)?.name ??
+                                    undefined
+                                  : undefined}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent alignItemWithTrigger={true}>
+                              <SelectGroup>
+                                <SelectItem value="">None (Custom Settings)</SelectItem>
+                                {captionTemplates.map((template) => (
+                                  <SelectItem key={template.id} value={template.id}>
+                                    {template.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          {captionSettings.templateId && onDeleteTemplate && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => onDeleteTemplate(captionSettings.templateId!)}
+                              aria-label="Delete template"
+                            >
+                              <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" strokeWidth={2} />
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          Select a saved preset template or configure custom settings below
+                        </p>
+                      </FieldContent>
+                    </Field>
 
-                {/* Font Color */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Font Color</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <div className="flex items-center gap-2">
+                    {/* Caption word count */}
+                    <div className="flex items-center justify-between gap-4">
+                      <Label className="text-xs shrink-0">Caption word count</Label>
                       <Input
-                        type="color"
-                        value={captionSettings.fontColor}
-                        onChange={(e) =>
-                          onCaptionSettingsChange({ ...captionSettings, fontColor: e.target.value })
-                        }
-                        className="w-12 h-8 cursor-pointer"
-                      />
-                      <Input
-                        type="text"
-                        value={captionSettings.fontColor}
-                        onChange={(e) =>
-                          onCaptionSettingsChange({ ...captionSettings, fontColor: e.target.value })
-                        }
-                        className="font-mono text-xs flex-1"
-                        placeholder="#FFFFFF"
-                      />
-                    </div>
-                  </FieldContent>
-                </Field>
-
-                {/* Font Size */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Font Size: {captionSettings.fontSize}px</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="range"
-                      min="12"
-                      max="100"
-                      value={captionSettings.fontSize}
-                      onChange={(e) =>
-                        onCaptionSettingsChange({
-                          ...captionSettings,
-                          fontSize: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full"
-                    />
-                  </FieldContent>
-                </Field>
-
-                {/* Outline Color */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Outline Color</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="color"
-                        value={captionSettings.outlineColor}
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={captionSettings.wordsPerCaption}
                         onChange={(e) =>
                           onCaptionSettingsChange({
                             ...captionSettings,
-                            outlineColor: e.target.value,
+                            wordsPerCaption: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)),
                           })
                         }
-                        className="w-12 h-8 cursor-pointer"
-                      />
-                      <Input
-                        type="text"
-                        value={captionSettings.outlineColor}
-                        onChange={(e) =>
-                          onCaptionSettingsChange({
-                            ...captionSettings,
-                            outlineColor: e.target.value,
-                          })
-                        }
-                        className="font-mono text-xs flex-1"
-                        placeholder="#000000"
+                        className="w-24"
                       />
                     </div>
-                  </FieldContent>
-                </Field>
 
-                {/* Outline Size */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Outline Size: {captionSettings.outlineSize}px</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="range"
-                      min="0"
-                      max="20"
-                      value={captionSettings.outlineSize}
-                      onChange={(e) =>
-                        onCaptionSettingsChange({
-                          ...captionSettings,
-                          outlineSize: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full"
-                    />
-                  </FieldContent>
-                </Field>
+                    <Separator />
 
-                {/* Caption Position */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Caption Position</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "top", label: "Top" },
-                        { value: "center", label: "Center" },
-                        { value: "bottom", label: "Bottom" },
-                        { value: "instagram", label: "Instagram" },
-                      ].map((option) => (
-                        <Label
-                          key={option.value}
-                          className="flex items-center gap-1.5 cursor-pointer text-xs"
+                    {/* Row 1: Font - 1 col */}
+                    <Field>
+                      <FieldLabel>
+                        <Label className="text-xs">Font</Label>
+                      </FieldLabel>
+                      <FieldContent>
+                        <Select
+                          value={captionSettings.font}
+                          onValueChange={(value) =>
+                            onCaptionSettingsChange({ ...captionSettings, font: value || "" })
+                          }
                         >
-                          <input
-                            type="radio"
-                            name="caption-position"
-                            value={option.value}
-                            checked={captionSettings.position === option.value}
-                            onChange={(e) =>
-                              onCaptionSettingsChange({
-                                ...captionSettings,
-                                position: e.target.value as CaptionSettings["position"],
-                              })
-                            }
-                            className="rounded border-border"
-                          />
-                          {option.label}
-                        </Label>
-                      ))}
-                    </div>
-                  </FieldContent>
-                </Field>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {availableFonts.map((font) => (
+                                <SelectItem key={font} value={font}>
+                                  {font}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FieldContent>
+                    </Field>
 
-                {/* Words Per Caption */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Words Per Caption</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={captionSettings.wordsPerCaption}
-                      onChange={(e) =>
-                        onCaptionSettingsChange({
-                          ...captionSettings,
-                          wordsPerCaption: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      className="w-full"
-                    />
-                  </FieldContent>
-                </Field>
-
-                {/* Loop Count */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">How Many Times Loop</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={captionSettings.loopCount}
-                      onChange={(e) =>
-                        onCaptionSettingsChange({
-                          ...captionSettings,
-                          loopCount: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      className="w-full"
-                    />
-                  </FieldContent>
-                </Field>
-
-                {/* Regular Play with Reverse */}
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Regular Play with Reverse One Time</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Label className="flex items-center gap-2 cursor-pointer text-xs font-normal">
-                      <input
-                        type="checkbox"
-                        checked={captionSettings.enableAlternatingLoop}
-                        onChange={(e) =>
+                {/* Row 2: Font Weight | Font Size */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel>
+                      <Label className="text-xs">Font Weight</Label>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Select
+                        value={captionSettings.fontWeight ?? "regular"}
+                        onValueChange={(value) =>
                           onCaptionSettingsChange({
                             ...captionSettings,
-                            enableAlternatingLoop: e.target.checked,
+                            fontWeight: (value || "regular") as "regular" | "bold" | "italic" | "bold_italic" | "black",
                           })
                         }
-                        className="rounded border-border"
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="regular">Regular</SelectItem>
+                            <SelectItem value="bold">Bold</SelectItem>
+                            <SelectItem value="italic">Italic</SelectItem>
+                            <SelectItem value="bold_italic">Bold Italic</SelectItem>
+                            <SelectItem value="black">Black</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel>
+                      <Label className="text-xs">Font Size</Label>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        type="number"
+                        value={captionSettings.fontSize}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          onCaptionSettingsChange({
+                            ...captionSettings,
+                            fontSize: isNaN(v) ? captionSettings.fontSize : v,
+                          });
+                        }}
+                        className="w-full"
+                        placeholder="px"
                       />
+                    </FieldContent>
+                  </Field>
+                </div>
+
+                {/* Row 3: Color - text left, picker right */}
+                <div className="flex items-center justify-between gap-4">
+                  <Label className="text-xs shrink-0">Color</Label>
+                  <Input
+                    type="color"
+                    value={captionSettings.fontColor}
+                    onChange={(e) =>
+                      onCaptionSettingsChange({ ...captionSettings, fontColor: e.target.value })
+                    }
+                    className="h-9 w-14 cursor-pointer p-1 border border-input rounded-md"
+                  />
+                </div>
+
+                {/* Row 4: Outline - text left, checkbox right */}
+                <div className="flex items-center justify-between gap-4">
+                  <Label className="text-xs shrink-0">Outline</Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="outline-enabled"
+                      checked={captionSettings.outlineEnabled}
+                      onCheckedChange={(checked) =>
+                        onCaptionSettingsChange({
+                          ...captionSettings,
+                          outlineEnabled: checked === true,
+                          outlineSize: checked ? (captionSettings.outlineSize || 3) : 0,
+                        })
+                      }
+                    />
+                    <Label htmlFor="outline-enabled" className="text-xs cursor-pointer font-normal">
                       Enable
                     </Label>
+                  </div>
+                </div>
+
+                {/* Row 5: Outline Size | Outline Color (when outline checked) */}
+                {captionSettings.outlineEnabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field orientation="verticalEnd">
+                      <FieldLabel>
+                        <Label className="text-xs justify-start items-end">Outline Size</Label>
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={captionSettings.outlineSize}
+                          onChange={(e) =>
+                            onCaptionSettingsChange({
+                              ...captionSettings,
+                              outlineSize: Math.min(20, Math.max(0, parseInt(e.target.value) || 0)),
+                            })
+                          }
+                          className="w-full"
+                          placeholder="px"
+                        />
+                      </FieldContent>
+                    </Field>
+                    <Field orientation="verticalEnd">
+                      <FieldLabel>
+                        <Label className="text-xs justify-start items-end">Outline Color</Label>
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          type="color"
+                          value={captionSettings.outlineColor}
+                          onChange={(e) =>
+                            onCaptionSettingsChange({
+                              ...captionSettings,
+                              outlineColor: e.target.value,
+                            })
+                          }
+                          className="h-9 w-14 cursor-pointer p-1 border border-input rounded-md"
+                        />
+                      </FieldContent>
+                    </Field>
+                  </div>
+                )}
+
+                {/* Row 6: Position */}
+                <Field>
+                  <FieldLabel>
+                    <Label className="text-xs">Position</Label>
+                  </FieldLabel>
+                  <FieldContent>
+                    <RadioGroup
+                      value={captionSettings.position}
+                      onValueChange={(value) =>
+                        onCaptionSettingsChange({
+                          ...captionSettings,
+                          position: value as CaptionSettings["position"],
+                        })
+                      }
+                      className="flex flex-wrap gap-4"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="top" id="position-top" />
+                        <Label htmlFor="position-top" className="text-xs cursor-pointer font-normal">Top</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="bottom" id="position-bottom" />
+                        <Label htmlFor="position-bottom" className="text-xs cursor-pointer font-normal">Bottom</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="center" id="position-center" />
+                        <Label htmlFor="position-center" className="text-xs cursor-pointer font-normal">Center</Label>
+                      </div>
+                    </RadioGroup>
                   </FieldContent>
                 </Field>
+
+                    {/* Row 7: Distance from edge (when top or bottom) */}
+                    {(captionSettings.position === "top" || captionSettings.position === "bottom") && (
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-xs shrink-0">Distance from edge (px)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="500"
+                          value={captionSettings.positionOffset}
+                          onChange={(e) =>
+                            onCaptionSettingsChange({
+                              ...captionSettings,
+                              positionOffset: Math.max(0, parseInt(e.target.value) || 0),
+                            })
+                          }
+                          className="w-24"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <Separator />
+
+                {/* Video Playback Settings */}
+                {/* Row: Video Loop - left text, right number input */}
+                <div className="flex items-center justify-between gap-4">
+                  <Label className="text-xs shrink-0">Video Loop</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={captionSettings.loopCount}
+                    onChange={(e) =>
+                      onCaptionSettingsChange({
+                        ...captionSettings,
+                        loopCount: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)),
+                      })
+                    }
+                    className="w-24"
+                  />
+                </div>
+                {/* Row: Reverse Play - left text, right checkbox */}
+                <div className="flex items-center justify-between gap-4 pb-[11px]">
+                  <Label className="text-xs shrink-0">Reverse Play</Label>
+                  {captionSettings.loopCount <= 1 ? (
+                    <Checkbox
+                      id="reverse-play"
+                      checked={captionSettings.enableAlternatingLoop}
+                      onCheckedChange={(checked) =>
+                        onCaptionSettingsChange({
+                          ...captionSettings,
+                          enableAlternatingLoop: checked === true,
+                        })
+                      }
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Only when loop is 1</p>
+                  )}
+                </div>
               </FieldGroup>
             </form>
           </CardContent>
-          <CardFooter>
+          {captionSettings.enableVideoCaption && (
+            <CardFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={onPreviewClick}
+              >
+                <HugeiconsIcon icon={EyeIcon} className="size-4 mr-2" />
+                Preview
+              </Button>
+              {onSaveAsTemplate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setIsSaveDialogOpen(true)}
+                >
+                  <HugeiconsIcon icon={FloppyDiskIcon} className="size-4 mr-2" />
+                  Save as Template
+                </Button>
+              )}
+            </CardFooter>
+          )}
+        </CollapsibleContent>
+      </Card>
+
+      {/* Save as Template Dialog */}
+      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Enter a name for your caption template. This will save the current settings as a reusable template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Field>
+              <FieldLabel>
+                <Label className="text-sm">Template Name</Label>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Enter template name..."
+                  className="w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && templateName.trim()) {
+                      handleSaveTemplate()
+                    }
+                  }}
+                />
+              </FieldContent>
+            </Field>
+          </div>
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              className="w-full"
-              onClick={onPreviewClick}
+              onClick={() => {
+                setTemplateName("")
+                setIsSaveDialogOpen(false)
+              }}
             >
-              <HugeiconsIcon icon={EyeIcon} className="size-4 mr-2" />
-              Preview Caption Design
+              Cancel
             </Button>
-          </CardFooter>
-        </CollapsibleContent>
-      </Card>
+            <Button
+              type="button"
+              onClick={handleSaveTemplate}
+              disabled={!templateName.trim()}
+            >
+              Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Collapsible>
   )
 }

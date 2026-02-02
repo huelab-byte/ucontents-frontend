@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlusSignIcon } from "@hugeicons/core-free-icons"
-import { ManualPostingForm } from "./manual-posting-form"
+import { ManualPostingForm, type AutoPostingInterval } from "./manual-posting-form"
 import type { ManualPostingItem } from "./types"
 
 interface NewManualPostingDialogProps {
@@ -34,8 +34,10 @@ export function NewManualPostingDialog({ onCreate }: NewManualPostingDialogProps
     youtube: false,
   })
   const [dailyAutoPosting, setDailyAutoPosting] = React.useState(1)
+  const [autoPostingInterval, setAutoPostingInterval] = React.useState<AutoPostingInterval>("")
   const [dailyRepublishEnabled, setDailyRepublishEnabled] = React.useState(false)
-  const [dailyRepublish, setDailyRepublish] = React.useState(1)
+  const [dailyRepublish, setDailyRepublish] = React.useState(0)
+  const [dailyRepublishInterval, setDailyRepublishInterval] = React.useState<AutoPostingInterval>("")
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -77,8 +79,10 @@ export function NewManualPostingDialog({ onCreate }: NewManualPostingDialogProps
         youtube: false,
       })
       setDailyAutoPosting(1)
+      setAutoPostingInterval("")
       setDailyRepublishEnabled(false)
-      setDailyRepublish(1)
+      setDailyRepublish(0)
+      setDailyRepublishInterval("")
       setOpen(false)
     }
   }
@@ -96,8 +100,10 @@ export function NewManualPostingDialog({ onCreate }: NewManualPostingDialogProps
       youtube: false,
     })
     setDailyAutoPosting(1)
+    setAutoPostingInterval("")
     setDailyRepublishEnabled(false)
-    setDailyRepublish(1)
+    setDailyRepublish(0)
+    setDailyRepublishInterval("")
     setOpen(false)
   }
 
@@ -146,8 +152,10 @@ export function NewManualPostingDialog({ onCreate }: NewManualPostingDialogProps
             logoPreview={logoPreview}
             connectedTo={connectedTo}
             dailyAutoPosting={dailyAutoPosting}
+            autoPostingInterval={autoPostingInterval}
             dailyRepublishEnabled={dailyRepublishEnabled}
             dailyRepublish={dailyRepublish}
+            dailyRepublishInterval={dailyRepublishInterval}
             onBrandNameChange={setBrandName}
             onProjectNameChange={setProjectName}
             onContentSourceChange={setContentSource}
@@ -158,8 +166,10 @@ export function NewManualPostingDialog({ onCreate }: NewManualPostingDialogProps
             }}
             onPlatformConnection={handlePlatformConnection}
             onDailyAutoPostingChange={setDailyAutoPosting}
+            onAutoPostingIntervalChange={setAutoPostingInterval}
             onDailyRepublishEnabledChange={setDailyRepublishEnabled}
             onDailyRepublishChange={setDailyRepublish}
+            onDailyRepublishIntervalChange={setDailyRepublishInterval}
             logoInputId="brand-logo-upload"
           />
           <AlertDialogFooter className="mt-6">

@@ -52,7 +52,7 @@ export default function ContentSourcesPage() {
   }
 
   const handleNavigate = (id: string) => {
-    router.push(`/content-generation/content-sources/${id}`)
+    router.push(`/content-generation/media-upload/${id}`)
   }
 
   // Pagination calculations
@@ -76,7 +76,7 @@ export default function ContentSourcesPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold">Content Sources</h1>
+          <h1 className="text-3xl font-bold">Media Upload</h1>
           <p className="text-muted-foreground mt-2">
             Create and manage video sources used for automated editing workflows. Each source defines
             the video format, aspect ratio (9:16 or 16:9), and orientation (vertical or landscape).

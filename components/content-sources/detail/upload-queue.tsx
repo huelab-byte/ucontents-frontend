@@ -32,6 +32,7 @@ interface UploadQueueProps {
   onRemoveFromQueue: (fileId: string) => void
   onClearQueue: () => void
   onDeleteCompleted: (fileId: string) => void
+  onStartUpload?: () => void
 }
 
 export function UploadQueue({
@@ -43,6 +44,7 @@ export function UploadQueue({
   onRemoveFromQueue,
   onClearQueue,
   onDeleteCompleted,
+  onStartUpload,
 }: UploadQueueProps) {
   const totalQueued = uploadQueue.length
   const totalProcessing = processingQueue.length
@@ -85,7 +87,14 @@ export function UploadQueue({
             {/* Queued Files */}
             {totalQueued > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Queued ({totalQueued})</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Queued ({totalQueued})</h4>
+                  {onStartUpload && (
+                    <Button size="sm" onClick={onStartUpload}>
+                      Start Upload
+                    </Button>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {uploadQueue.map((file) => (
                     <div

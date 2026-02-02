@@ -18,6 +18,7 @@ import {
 } from "@/components/video-overlay"
 import { usePermission } from "@/lib/hooks/use-permission"
 import { videoOverlayService, type VideoOverlay, type VideoOverlayFolder, type VideoOverlayUserWithUploadCount, toast } from "@/lib/api"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { UserFilter } from "@/components/shared/user-filter"
 
 export default function LibraryViewPage() {
@@ -31,6 +32,7 @@ export default function LibraryViewPage() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false)
   const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null)
   const [usersWithUploads, setUsersWithUploads] = React.useState<VideoOverlayUserWithUploadCount[]>([])
   const itemsPerPage = 8
@@ -218,7 +220,13 @@ export default function LibraryViewPage() {
     }
   }
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    if (selectedClips.size > 0) {
+      setIsBulkDeleteOpen(true)
+    }
+  }
+
+  const confirmDeleteSelected = async () => {
     const selectedIds = Array.from(selectedClips)
     const numericIds = selectedIds
       .map((id) => Number(id))
@@ -351,6 +359,15 @@ export default function LibraryViewPage() {
           onSelectAll={handleSelectAll}
           onDelete={handleDeleteSelected}
           onClear={() => setSelectedClips(new Set())}
+        />
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <DeleteConfirmDialog
+          open={isBulkDeleteOpen}
+          onOpenChange={setIsBulkDeleteOpen}
+          title="Delete Selected Video Overlays"
+          description={`Are you sure you want to delete ${selectedClips.size} selected video overlay${selectedClips.size > 1 ? 's' : ''}? This action cannot be undone.`}
+          onConfirm={confirmDeleteSelected}
         />
       </div>
     </AdminDashboardLayout>

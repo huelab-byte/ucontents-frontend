@@ -11,6 +11,7 @@ export interface Notification {
   severity: NotificationSeverity | null
   created_by_user_id: number | null
   created_at: string
+  url: string | null
 }
 
 export interface NotificationRecipient {
@@ -67,6 +68,14 @@ export const notificationService = {
 
   async markAsRead(recipientId: number): Promise<ApiResponse<NotificationRecipient>> {
     return apiClient.post(`/v1/customer/notifications/${recipientId}/read`, {}, { skipToast: true })
+  },
+
+  async markAllAsRead(): Promise<ApiResponse<{ marked_count: number }>> {
+    return apiClient.post('/v1/customer/notifications/mark-all-read', {}, { skipToast: true })
+  },
+
+  async clearAll(): Promise<ApiResponse<{ deleted_count: number }>> {
+    return apiClient.delete('/v1/customer/notifications', { skipToast: true })
   },
 
   async getPusherAuth(socketId: string, channelName: string): Promise<ApiResponse<{ auth: string }>> {

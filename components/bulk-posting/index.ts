@@ -1,8 +1,8 @@
 // Types
-export type { BulkPostingItem, ScheduledContent } from "./types"
+export type { BulkPostingItem, ScheduledContent, ContentSourceType, ConnectionSelection } from "./types"
 
 // Constants
-export { demoBulkPosting, contentSources } from "./constants"
+export { demoBulkPosting, demoChannels, demoGroups, contentSources, mediaModules, mediaFolders, contentSourceTypeOptions } from "./constants"
 
 // Utils
 export { formatDate } from "./utils"
@@ -12,6 +12,7 @@ export { PlatformIcons } from "./platform-icons"
 export { StatusBadge } from "./status-badge"
 export { BrandDisplay } from "./brand-display"
 export { PlatformConnectionButtons } from "./platform-connection-buttons"
+export { ConnectionSelector } from "./connection-selector"
 export { BulkPostingForm } from "./bulk-posting-form"
 export { NewBulkPostingDialog } from "./new-bulk-posting-dialog"
 export { EditBulkPostingDialog } from "./edit-bulk-posting-dialog"

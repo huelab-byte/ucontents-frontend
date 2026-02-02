@@ -12,6 +12,8 @@ interface NotificationsContextValue {
   isLoading: boolean
   refresh: () => Promise<void>
   markAsRead: (recipientId: number) => Promise<void>
+  markAllAsRead: () => Promise<void>
+  clearAll: () => Promise<void>
 }
 
 const NotificationsContext = React.createContext<NotificationsContextValue | null>(null)
@@ -67,6 +69,36 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     }
   }, [])
 
+  const markAllAsRead = React.useCallback(async () => {
+    try {
+      const res = await notificationService.markAllAsRead()
+      if (res.success) {
+        // Update all notifications to be read
+        setNotifications((prev) =>
+          prev.map((n) => ({
+            ...n,
+            read_at: n.read_at || new Date().toISOString(),
+          }))
+        )
+        setUnreadCount(0)
+      }
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error)
+    }
+  }, [])
+
+  const clearAll = React.useCallback(async () => {
+    try {
+      const res = await notificationService.clearAll()
+      if (res.success) {
+        setNotifications([])
+        setUnreadCount(0)
+      }
+    } catch (error) {
+      console.error("Failed to clear all notifications:", error)
+    }
+  }, [])
+
   // Track if initial load has run (prevents double execution in StrictMode)
   const hasInitialLoadRef = React.useRef(false)
 
@@ -78,11 +110,18 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   }, [refresh])
 
   // Poll for updates every 60 seconds (fallback if Pusher not configured)
+  // When unread count increases, refresh the full notification list
   React.useEffect(() => {
     const interval = setInterval(() => {
       notificationService.getUnreadCount().then((res) => {
         if (res.success && res.data) {
-          setUnreadCount(res.data.unread_count)
+          const newCount = res.data.unread_count
+          // If unread count increased, a new notification arrived - refresh the list
+          if (newCount > unreadCount) {
+            refresh()
+          } else {
+            setUnreadCount(newCount)
+          }
         }
       }).catch((error) => {
         console.error("Failed to fetch unread count:", error)
@@ -90,7 +129,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [unreadCount, refresh])
 
   const value = React.useMemo(
     () => ({
@@ -99,8 +138,10 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       isLoading,
       refresh,
       markAsRead,
+      markAllAsRead,
+      clearAll,
     }),
-    [notifications, unreadCount, isLoading, refresh, markAsRead]
+    [notifications, unreadCount, isLoading, refresh, markAsRead, markAllAsRead, clearAll]
   )
 
   return (

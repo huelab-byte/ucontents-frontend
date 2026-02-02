@@ -13,12 +13,14 @@ interface ImageClipGridProps {
   clips: ImageClip[]
   selectedClips: Set<string>
   onToggleSelection: (clipId: string) => void
+  showSelection?: boolean
 }
 
 export function ImageClipGrid({
   clips,
   selectedClips,
   onToggleSelection,
+  showSelection = true,
 }: ImageClipGridProps) {
   if (clips.length === 0) {
     return (
@@ -38,10 +40,11 @@ export function ImageClipGrid({
         <Card
           key={clip.id}
           className={cn(
-            "mr-0 sm:mr-[26px] cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 flex flex-col overflow-hidden py-0",
-            selectedClips.has(clip.id) && "ring-2 ring-primary"
+            "mr-0 sm:mr-[26px] transition-all flex flex-col overflow-hidden py-0",
+            showSelection && "cursor-pointer hover:ring-2 hover:ring-primary/50",
+            showSelection && selectedClips.has(clip.id) && "ring-2 ring-primary"
           )}
-          onClick={() => onToggleSelection(clip.id)}
+          onClick={showSelection ? () => onToggleSelection(clip.id) : undefined}
         >
           <div className="relative flex-1 flex flex-col">
             {/* Image Preview */}
@@ -65,16 +68,17 @@ export function ImageClipGrid({
                   <HugeiconsIcon icon={Image01Icon} className="size-12 text-muted-foreground/50" />
                 </div>
               )}
-              {/* Selection Checkbox */}
-              <div className="absolute top-2 right-2 z-10">
-                {selectedClips.has(clip.id) ? (
-                  <div className="size-5 rounded bg-primary flex items-center justify-center">
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} className="size-4 text-primary-foreground" />
-                  </div>
-                ) : (
-                  <div className="size-5 rounded border-2 border-background bg-background/50" />
-                )}
-              </div>
+              {showSelection && (
+                <div className="absolute top-2 right-2 z-10">
+                  {selectedClips.has(clip.id) ? (
+                    <div className="size-5 rounded bg-primary flex items-center justify-center">
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} className="size-4 text-primary-foreground" />
+                    </div>
+                  ) : (
+                    <div className="size-5 rounded border-2 border-background bg-background/50" />
+                  )}
+                </div>
+              )}
               {/* Upload Progress Bar */}
               {clip.uploadProgress !== undefined && clip.status === "processing" && (
                 <div className="absolute bottom-0 left-0 right-0 z-20 p-2">

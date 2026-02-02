@@ -140,7 +140,28 @@ export const audioLibraryService = {
   },
 
   /**
-   * Customer: list audio
+   * Customer: list folders that have browse-visible (ready) audio (requires use_audio_library)
+   */
+  async browseFolders(): Promise<ApiResponse<AudioFolder[]>> {
+    return apiClient.get('/v1/customer/audio-library/browse/folders')
+  },
+
+  /**
+   * Customer: browse shared audio (read-only; requires use_audio_library)
+   */
+  async browseAudio(params?: AudioListParams): Promise<ApiResponse<Audio[]>> {
+    return apiClient.get('/v1/customer/audio-library/browse', { params })
+  },
+
+  /**
+   * Customer: get single shared audio (browse)
+   */
+  async getBrowseAudio(id: number): Promise<ApiResponse<Audio>> {
+    return apiClient.get(`/v1/customer/audio-library/browse/${id}`)
+  },
+
+  /**
+   * Customer: list audio (own; requires view_audio)
    */
   async listAudio(params?: AudioListParams): Promise<ApiResponse<Audio[]>> {
     return apiClient.get('/v1/customer/audio-library/audio', { params })

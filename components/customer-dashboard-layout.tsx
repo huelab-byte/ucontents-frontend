@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   SidebarProvider,
   SidebarInset,
@@ -19,15 +19,15 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   NotificationIcon,
   Alert01Icon,
-  CancelCircleIcon,
   InformationCircleIcon,
   CheckmarkCircle01Icon,
   AlertCircleIcon,
   CheckmarkCircle02Icon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { useNotifications } from "@/lib/notifications-context"
-import type { NotificationSeverity } from "@/lib/api"
+import type { NotificationSeverity, NotificationRecipient } from "@/lib/api"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -71,9 +71,27 @@ const notificationVariants: Record<NotificationSeverity | 'default', {
   },
 }
 
+/**
+ * Get the appropriate notification URL based on user role.
+ * Customer users use /support/tickets/{id}, admins use /admin/support/{id}.
+ */
+function getNotificationUrl(recipient: NotificationRecipient, isAdmin: boolean): string | null {
+  const url = recipient.notification.url
+  if (!url) return null
+
+  // Transform support ticket URLs for admin users
+  if (isAdmin && url.startsWith('/support/tickets/')) {
+    const ticketId = url.split('/').pop()
+    return `/admin/support/${ticketId}`
+  }
+
+  return url
+}
+
 function HeaderContent() {
   const pathname = usePathname()
-  const { notifications, unreadCount, markAsRead, isLoading } = useNotifications()
+  const router = useRouter()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll, refresh, isLoading } = useNotifications()
   const [showNotifications, setShowNotifications] = React.useState(false)
 
   // Close dropdown on navigation to prevent portal cleanup errors
@@ -84,10 +102,37 @@ function HeaderContent() {
   const handleMarkAsRead = React.useCallback(async (recipientId: number) => {
     await markAsRead(recipientId)
   }, [markAsRead])
+
+  const handleMarkAllAsRead = React.useCallback(async () => {
+    await markAllAsRead()
+  }, [markAllAsRead])
+
+  const handleClearAll = React.useCallback(async () => {
+    await clearAll()
+  }, [clearAll])
+
+  const handleNotificationClick = React.useCallback((recipient: NotificationRecipient) => {
+    const url = getNotificationUrl(recipient, false) // Customer dashboard - not admin
+    
+    // Mark as read if unread
+    if (!recipient.read_at) {
+      markAsRead(recipient.id)
+    }
+    
+    // Navigate if URL exists
+    if (url) {
+      setShowNotifications(false)
+      router.push(url)
+    }
+  }, [markAsRead, router])
   
   const handleNotificationsOpenChange = React.useCallback((open: boolean) => {
     setShowNotifications(open)
-  }, [])
+    // Refresh notifications when dropdown opens to get latest data
+    if (open) {
+      refresh()
+    }
+  }, [refresh])
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b bg-background">
@@ -114,9 +159,30 @@ function HeaderContent() {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h3 className="font-semibold text-sm">Notifications</h3>
-              {unreadCount > 0 && (
-                <span className="text-xs text-muted-foreground">{unreadCount} unread</span>
-              )}
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={handleMarkAllAsRead}
+                  >
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={1.5} className="size-3.5 mr-1" />
+                    Mark all read
+                  </Button>
+                )}
+                {notifications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={handleClearAll}
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.5} className="size-3.5 mr-1" />
+                    Clear all
+                  </Button>
+                )}
+              </div>
             </div>
             {isLoading ? (
               <div className="px-4 py-8 text-center">
@@ -135,17 +201,19 @@ function HeaderContent() {
                   const variant = notificationVariants[severity] || notificationVariants.default
                   const Icon = variant.icon
                   const isUnread = !recipient.read_at
+                  const hasUrl = !!getNotificationUrl(recipient, false)
 
                   return (
                     <div
                       key={recipient.id}
                       className={cn(
-                        "mb-2 last:mb-0 rounded-lg border p-3 shadow-sm transition-colors cursor-pointer",
+                        "mb-2 last:mb-0 rounded-lg border p-3 shadow-sm transition-colors",
                         isUnread ? variant.bg : "bg-muted/30",
                         isUnread ? variant.border : "border-border",
-                        "hover:bg-muted/50"
+                        "hover:bg-muted/50",
+                        hasUrl ? "cursor-pointer" : "cursor-default"
                       )}
-                      onClick={() => isUnread && handleMarkAsRead(recipient.id)}
+                      onClick={() => handleNotificationClick(recipient)}
                     >
                       <div className="flex items-start gap-3">
                         <HugeiconsIcon

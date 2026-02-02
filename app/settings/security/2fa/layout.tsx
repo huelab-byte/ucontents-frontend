@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { NotificationsProvider } from "@/lib/notifications-context"
 
 export const metadata: Metadata = {
   title: "Two-Factor Authentication",
@@ -10,5 +11,5 @@ export default function TwoFactorLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return <NotificationsProvider>{children}</NotificationsProvider>
 }

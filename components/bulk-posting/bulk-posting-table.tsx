@@ -118,13 +118,13 @@ export function BulkPostingTable({
                   Brand
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                  Connected To
+                  Connections
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                   Total Content
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                  Remaining New Content
+                  Remaining Content
                 </th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                   Started Date
@@ -153,7 +153,14 @@ export function BulkPostingTable({
                     className="px-4 py-3 cursor-pointer"
                     onClick={() => onView(item.id)}
                   >
-                    <PlatformIcons platforms={item.connectedTo} />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium">
+                        {(item.connections?.channels?.length || 0) + (item.connections?.groups?.length || 0)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {item.connections?.groups?.length ? `(${item.connections.groups.length} groups)` : "channels"}
+                      </span>
+                    </div>
                   </td>
                   <td 
                     className="px-4 py-3 cursor-pointer"
