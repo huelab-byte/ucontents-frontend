@@ -342,6 +342,13 @@ export default function LoginPage() {
               Sign up
             </Link>
           </div>
+          <div className="text-xs text-center text-muted-foreground">
+            <Link href="/privacy-policy" className="hover:underline">Privacy Policy</Link>
+            {" · "}
+            <Link href="/terms-of-service" className="hover:underline">Terms of Service</Link>
+            {" · "}
+            <Link href="/data-removal-request" className="hover:underline">Data Removal</Link>
+          </div>
         </CardFooter>
       </Card>
     </div>

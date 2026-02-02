@@ -38,8 +38,8 @@ export default function RegisterPage() {
     confirmPassword: "",
     acceptTerms: false,
   })
-  const [termsUrl, setTermsUrl] = React.useState("/terms")
-  const [privacyUrl, setPrivacyUrl] = React.useState("/privacy")
+  const [termsUrl, setTermsUrl] = React.useState("/terms-of-service")
+  const [privacyUrl, setPrivacyUrl] = React.useState("/privacy-policy")
 
   // Check if social auth is enabled, fetch password requirements, and get terms/privacy URLs
   React.useEffect(() => {
@@ -487,6 +487,13 @@ export default function RegisterPage() {
             <Link href="/auth/login" className="text-primary hover:underline font-medium">
               Sign in
             </Link>
+          </div>
+          <div className="text-xs text-center text-muted-foreground">
+            <Link href="/privacy-policy" className="hover:underline">Privacy Policy</Link>
+            {" · "}
+            <Link href="/terms-of-service" className="hover:underline">Terms of Service</Link>
+            {" · "}
+            <Link href="/data-removal-request" className="hover:underline">Data Removal</Link>
           </div>
         </CardFooter>
       </Card>
