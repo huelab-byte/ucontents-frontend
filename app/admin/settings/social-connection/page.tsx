@@ -214,13 +214,16 @@ export default function SocialConnectionSettingsPage() {
     }
   }
 
-  // Frontend callback URLs (add these to Valid OAuth Redirect URIs when OAUTH_REDIRECT_USE_FRONTEND=true)
+  // Frontend callback URLs (add these to Valid OAuth Redirect URIs when OAUTH_REDIRECT_USE_FRONTEND=true).
+  // Normalize: remove www. to avoid redirect_uri_mismatch with providers.
   const getFrontendCallbackUrl = (path: string) => {
     const base =
       (typeof window !== "undefined" ? window.location.origin : null) ||
       process.env.NEXT_PUBLIC_APP_URL ||
       ""
-    return base ? `${base.replace(/\/$/, "")}/app/${path}` : ""
+    if (!base) return ""
+    const normalized = base.replace(/^(https?:\/\/)www\./i, "$1")
+    return `${normalized.replace(/\/$/, "")}/app/${path}`
   }
 
   const copyToClipboard = async (value: string, key: string) => {

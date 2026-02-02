@@ -71,13 +71,20 @@ export const socialConnectionService = {
     return apiClient.get('/v1/customer/social-connection/providers')
   },
 
+  /**
+   * Get OAuth redirect URL. Pass callback_base_url (e.g. window.location.origin) so the
+   * backend uses the exact URL the user is on (e.g. https://localhost:3000) for redirect_uri.
+   */
   async getRedirectUrl(
     provider: SocialProvider,
-    channelTypes?: string[]
+    channelTypes?: string[],
+    callbackBaseUrl?: string
   ): Promise<ApiResponse<{ redirect_url: string }>> {
-    const params = channelTypes ? { channel_types: channelTypes } : undefined
+    const params: Record<string, string | string[]> = {}
+    if (channelTypes?.length) params.channel_types = channelTypes
+    if (callbackBaseUrl) params.callback_base_url = callbackBaseUrl
     return apiClient.get(`/v1/customer/social-connection/${provider}/redirect`, {
-      params,
+      params: Object.keys(params).length ? params : undefined,
       skipToast: true,
     })
   },

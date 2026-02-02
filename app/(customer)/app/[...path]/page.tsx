@@ -7,6 +7,11 @@ import { CustomerDashboardLayout } from "@/components/customer-dashboard-layout"
 import { socialConnectionService, type SocialProvider } from "@/lib/api"
 import { toast } from "@/lib/toast"
 
+/**
+ * Social Connection OAuth callback (connect channel: Facebook, Instagram, YouTube, TikTok).
+ * This is NOT social login — it uses SocialConnection module exchange-code only.
+ */
+
 /** Map /app/{platform}/{type} path to backend provider (meta | google | tiktok) */
 const PATH_TO_PROVIDER: Record<string, SocialProvider> = {
   "tiktok/profile": "tiktok",
@@ -15,6 +20,15 @@ const PATH_TO_PROVIDER: Record<string, SocialProvider> = {
   "facebook/page": "meta",
   "instagram/profile": "meta",
 }
+
+/** Normalize origin: remove www. to match backend callback URL and avoid redirect_uri_mismatch */
+function normalizeOrigin(origin: string): string {
+  return origin.replace(/^(https?:\/\/)www\./i, "$1")
+}
+
+/** OAuth codes are single-use. Prevent duplicate exchange (e.g. React Strict Mode double-mount). */
+const exchangedCodes = new Set<string>()
+const redirectUrlByCode = new Map<string, string>()
 
 function OAuthCallbackContent() {
   const searchParams = useSearchParams()
@@ -25,6 +39,9 @@ function OAuthCallbackContent() {
   const state = searchParams.get("state")
   const [status, setStatus] = React.useState<"loading" | "done" | "error">("loading")
   const [message, setMessage] = React.useState<string>("")
+
+  // Use ref to prevent double exchange in StrictMode (effect runs twice synchronously)
+  const exchangeStartedRef = React.useRef(false)
 
   React.useEffect(() => {
     if (!code || !state) {
@@ -40,35 +57,76 @@ function OAuthCallbackContent() {
       return
     }
 
-    const redirectUri =
-      typeof window !== "undefined"
-        ? window.location.origin + "/app/" + path
-        : ""
+    // Check both Set (cross-render) and ref (same render cycle in StrictMode)
+    // If exchange is already in progress, just return - the first effect will handle redirect
+    if (exchangeStartedRef.current) {
+      // StrictMode second call - exchange in progress, do nothing
+      return
+    }
+    if (exchangedCodes.has(code)) {
+      // Already exchanged in a previous render - redirect if URL available
+      const stored = redirectUrlByCode.get(code)
+      if (stored) {
+        setStatus("done")
+        window.location.href = stored
+      }
+      // If no stored URL, the redirect already happened or is happening
+      return
+    }
 
-    let cancelled = false
+    // Mark as started immediately (sync) to prevent StrictMode double-call
+    exchangeStartedRef.current = true
+    exchangedCodes.add(code)
+
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : ""
+    const redirectUri = origin ? normalizeOrigin(origin) + "/app/" + path : ""
+
+    // Track if component is still mounted for state updates
+    let isMounted = true
+
+    function handleError(msg: string) {
+      if (!isMounted) return
+      setStatus("error")
+      setMessage(msg)
+      toast.error("Connection failed")
+    }
+
+    function doRedirect(url: string) {
+      // Store for potential re-renders
+      if (code) redirectUrlByCode.set(code, url)
+      // Update state only if mounted (avoid React warning)
+      if (isMounted) setStatus("done")
+      // Navigate - this works even if component unmounts
+      window.location.href = url
+    }
 
     socialConnectionService
       .exchangeCode(provider, { code, state, redirect_uri: redirectUri })
       .then((res) => {
-        if (cancelled) return
-        if (res.success && res.data?.redirect_url) {
-          setStatus("done")
-          window.location.href = res.data.redirect_url
+        const data = res?.data
+        const redirectUrl = data?.redirect_url
+        if (res?.success && redirectUrl) {
+          doRedirect(redirectUrl)
           return
         }
-        setStatus("error")
-        setMessage(res.message || "Exchange failed")
+        if (res?.success && !redirectUrl) {
+          doRedirect("/connection")
+          return
+        }
+        handleError(res?.message || "Exchange failed")
       })
       .catch((err) => {
-        if (cancelled) return
-        console.error("OAuth exchange failed:", err)
-        setStatus("error")
-        setMessage("Connection failed. Please try again.")
-        toast.error("Connection failed")
+        console.error("Social Connection exchange failed:", err)
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Connection failed. Please try again."
+        handleError(typeof msg === "string" ? msg : "Connection failed. Please try again.")
       })
 
     return () => {
-      cancelled = true
+      isMounted = false
     }
   }, [path, code, state])
 

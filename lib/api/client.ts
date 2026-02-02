@@ -121,12 +121,14 @@ apiClient.interceptors.response.use(
         // Don't redirect if we're already on an auth page (prevents redirect loops)
         const currentPath = window.location.pathname
         const isOnAuthPage = currentPath.startsWith('/auth/')
+        // Don't redirect if we're on OAuth callback page (/app/...) so user sees "Connection failed" and can retry
+        const isOnOAuthCallbackPage = currentPath.startsWith('/app/')
         
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         
-        // Only redirect if not already on an auth page
-        if (!isOnAuthPage) {
+        // Only redirect if not already on an auth page and not on OAuth callback page
+        if (!isOnAuthPage && !isOnOAuthCallbackPage) {
           window.location.href = '/auth/login'
         }
       }

@@ -129,6 +129,22 @@ export function RouteGuard({
     )
   }
 
+  // Social Connection OAuth callback: /app/facebook/page, /app/youtube/channel, etc.
+  // Render immediately when user has token so the callback can exchange code without waiting for full auth init.
+  const isSocialConnectionCallback =
+    typeof pathname === "string" &&
+    pathname.startsWith("/app/") &&
+    pathname.length > 5
+  const hasToken =
+    typeof window !== "undefined" && Boolean(localStorage.getItem("token"))
+  if (
+    isSocialConnectionCallback &&
+    hasToken &&
+    (isLoading || isCheckingEmailVerification || isChecking2FA)
+  ) {
+    return <>{children}</>
+  }
+
   if (isLoading || isCheckingEmailVerification || isChecking2FA) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -141,6 +157,9 @@ export function RouteGuard({
   }
 
   if (!isAuthenticated) {
+    if (isSocialConnectionCallback && hasToken) {
+      return <>{children}</>
+    }
     return null
   }
 

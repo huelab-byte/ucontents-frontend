@@ -149,10 +149,15 @@ function ConnectionPageContent() {
     }
   }, [])
 
+  // Avoid showing the same OAuth result toast twice (e.g. React Strict Mode or double-mount)
+  const oauthResultShownRef = React.useRef<string | null>(null)
+
   // Show result of OAuth callback (success/error) when redirected back from provider
   React.useEffect(() => {
     const status = searchParams.get("status")
     const provider = searchParams.get("provider") as SocialProvider | null
+    const error = searchParams.get("error")
+    const errorMessage = searchParams.get("error_message")
     const token = searchParams.get("token")
     const channelsAvailable = searchParams.get("channels_available")
     const channelsUpserted = searchParams.get("channels_upserted")
@@ -197,27 +202,48 @@ function ConnectionPageContent() {
           window.history.replaceState({}, "", url.toString())
         })
     } else if (status === "success") {
-      const count = channelsUpserted ? parseInt(channelsUpserted, 10) : 0
-      if (count > 0) {
-        toast.success(`Successfully connected ${count} connection${count > 1 ? "s" : ""}`)
-      } else {
-        toast.success("Account connected successfully")
+      const key = `success-${provider}-${channelsUpserted ?? ""}`
+      if (oauthResultShownRef.current !== key) {
+        oauthResultShownRef.current = key
+        const count = channelsUpserted ? parseInt(channelsUpserted, 10) : 0
+        if (count > 0) {
+          toast.success(`Successfully connected ${count} connection${count > 1 ? "s" : ""}`)
+        } else {
+          toast.success("Account connected successfully")
+        }
       }
-      // Reload channels to reflect new connection
       load()
-      // Clear URL params after showing message
       const url = new URL(window.location.href)
       url.searchParams.delete("status")
       url.searchParams.delete("provider")
       url.searchParams.delete("channels_upserted")
       window.history.replaceState({}, "", url.toString())
     } else if (status === "error") {
-      toast.error("Social connection failed. Please try again.")
-      // Clear URL params after showing message
+      const key = `error-${provider}-${error ?? ""}`
+      if (oauthResultShownRef.current !== key) {
+        oauthResultShownRef.current = key
+        if (error === "session_expired") {
+          toast.error("Your connection session expired. Please try adding the connection again.")
+        } else if (error === "redirect_uri_mismatch") {
+          toast.error(
+            "Connection failed: redirect URL mismatch. Ensure your provider app uses the callback URL without www (e.g. https://ucontents.com/app/youtube/channel).",
+          )
+        } else if (errorMessage) {
+          try {
+            const decoded = decodeURIComponent(errorMessage)
+            toast.error(decoded.length > 200 ? `${decoded.slice(0, 200)}…` : decoded)
+          } catch {
+            toast.error("Social connection failed. Please try again.")
+          }
+        } else {
+          toast.error("Social connection failed. Please try again.")
+        }
+      }
       const url = new URL(window.location.href)
       url.searchParams.delete("status")
       url.searchParams.delete("provider")
       url.searchParams.delete("error")
+      url.searchParams.delete("error_message")
       window.history.replaceState({}, "", url.toString())
     }
     // We intentionally do not include `load` in deps to avoid double-loading on mount.
@@ -271,7 +297,9 @@ function ConnectionPageContent() {
 
   const connect = async (provider: SocialProvider, channelTypes?: string[]) => {
     try {
-      const res = await socialConnectionService.getRedirectUrl(provider, channelTypes)
+      // Pass current origin so backend builds redirect_uri that matches where the user is (e.g. https://localhost:3000)
+      const callbackBaseUrl = typeof window !== "undefined" ? window.location.origin : undefined
+      const res = await socialConnectionService.getRedirectUrl(provider, channelTypes, callbackBaseUrl)
       if (res.success && res.data?.redirect_url) {
         window.location.href = res.data.redirect_url
         return

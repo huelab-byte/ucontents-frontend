@@ -110,14 +110,20 @@ function Toggle({
 // Helper function to generate default callback URL
 const getDefaultCallbackUrl = (provider: string): string => {
   if (typeof window === 'undefined') return ''
-  
-  // Get the backend API URL (where the OAuth callback handler is)
-  // OAuth providers need to redirect to the backend API endpoint
+
+  // TikTok: use frontend callback (fixed URL for live app). Prefer frontend app URL; no www.
+  if (provider === 'tiktok') {
+    const base =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : null) ||
+      ''
+    if (!base) return ''
+    const normalized = base.replace(/^(https?:\/\/)www\./i, '$1')
+    return `${normalized.replace(/\/$/, '')}/app/tiktok/profile`
+  }
+
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
-  // Extract base URL from API URL (remove /api if present)
   const baseUrl = apiBaseUrl.replace(/\/api$/, '')
-  
-  // Return backend API callback URL - this is what OAuth providers need
   return `${baseUrl}/api/v1/auth/social/${provider}/callback`
 }
 
