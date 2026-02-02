@@ -161,6 +161,14 @@ const adminMenuItems: MenuItem[] = [
   },
 
   {
+    title: "Customer Management",
+    icon: UserIcon,
+    url: "/admin/customers",
+    permissions: ["view_customers", "manage_customers"],
+    items: [],
+  },
+
+  {
     title: "Plans",
     icon: CreditCardIcon,
     url: "/admin/plans",

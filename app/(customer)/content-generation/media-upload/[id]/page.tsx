@@ -435,6 +435,7 @@ export default function MediaUploadFolderDetailsPage() {
     const realFiles = await Promise.all(
       uploadQueue.map(async (f) => {
         if (!f.url) return null
+        // Local blob URL → File for upload (not an API call; object URL from createObjectURL)
         const res = await fetch(f.url)
         const blob = await res.blob()
         return new File([blob], f.filename, { type: blob.type || "video/mp4" })

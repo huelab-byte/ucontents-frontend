@@ -255,7 +255,11 @@ export default function ClientSettingsPage() {
           })
           setNewKeyDialogOpen(true)
         }
-        await loadClientKeys(clientId)
+        // Update state directly with new key
+        setClientKeys((prev) => ({
+          ...prev,
+          [clientId]: [...(prev[clientId] || []), keyData],
+        }))
         if (!isNewClient) {
           toast.success("API key generated successfully")
         }
@@ -277,7 +281,13 @@ export default function ClientSettingsPage() {
           })
           setNewKeyDialogOpen(true)
         }
-        await loadClientKeys(clientId)
+        // Update state directly: replace old key with rotated key
+        setClientKeys((prev) => ({
+          ...prev,
+          [clientId]: (prev[clientId] || []).map((k) =>
+            k.id === keyId ? keyData : k
+          ),
+        }))
         toast.success("API key rotated successfully")
       }
     } catch (error: any) {
@@ -291,7 +301,13 @@ export default function ClientSettingsPage() {
     try {
       const response = await clientService.revokeKey(revokeKeyData.clientId, revokeKeyData.keyId)
       if (response.success) {
-        await loadClientKeys(revokeKeyData.clientId)
+        // Update state directly: remove revoked key
+        setClientKeys((prev) => ({
+          ...prev,
+          [revokeKeyData.clientId]: (prev[revokeKeyData.clientId] || []).filter(
+            (k) => k.id !== revokeKeyData.keyId
+          ),
+        }))
         toast.success("API key revoked successfully")
         setRevokeKeyDialogOpen(false)
         setRevokeKeyData(null)

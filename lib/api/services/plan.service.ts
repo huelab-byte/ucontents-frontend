@@ -111,4 +111,11 @@ export const planService = {
   async delete(id: number): Promise<ApiResponse<null>> {
     return apiClient.delete(`/v1/admin/plans/${id}`, { skipToast: true })
   },
+
+  /**
+   * Assign plan to a user (admin only). Creates subscription or invoice for the user.
+   */
+  async assignPlan(planId: number, userId: number): Promise<ApiResponse<{ subscription: unknown; invoice?: unknown; payment_required?: boolean }>> {
+    return apiClient.post(`/v1/admin/plans/${planId}/assign`, { user_id: userId }, { skipToast: true })
+  },
 }

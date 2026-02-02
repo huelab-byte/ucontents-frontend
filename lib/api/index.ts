@@ -11,6 +11,9 @@ export type { LoginRequest, RegisterRequest, LoginResponse, RegisterResponse, Pu
 export { userService } from './services/user.service'
 export type { User, CreateUserRequest, UpdateUserRequest, UserListParams } from './services/user.service'
 
+export { customerService } from './services/customer.service'
+export type { CustomerProfile, CustomerListParams } from './services/customer.service'
+
 export { clientService } from './services/client.service'
 export type {
   ApiClient,

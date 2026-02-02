@@ -1,0 +1,6 @@
+export { WelcomeWidget } from "./welcome-widget"
+export { CampaignStatsWidget } from "./campaign-stats-widget"
+export { ChannelsWidget } from "./channels-widget"
+export { SupportWidget } from "./support-widget"
+export { RecentCampaignsWidget } from "./recent-campaigns-widget"
+export { QuickActionsWidget } from "./quick-actions-widget"

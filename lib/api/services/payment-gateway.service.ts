@@ -118,6 +118,7 @@ export interface CreatePaymentRequest {
 
 export interface PaymentListParams {
   status?: string
+  user_id?: number
   invoice_id?: number
   payment_gateway_id?: number
   per_page?: number

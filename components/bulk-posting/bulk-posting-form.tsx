@@ -209,7 +209,7 @@ export function BulkPostingForm({
           <FieldContent>
             <Select
               value={contentSourceType}
-              onValueChange={(value) => onContentSourceTypeChange(value as ContentSourceType)}
+              onValueChange={(value) => value && onContentSourceTypeChange(value as ContentSourceType)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select option">

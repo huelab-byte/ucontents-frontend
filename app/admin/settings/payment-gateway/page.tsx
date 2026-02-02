@@ -475,9 +475,9 @@ function PaymentGatewayPageContent() {
       const response = await invoiceTemplateService.updateTemplate(template.id, {
         is_active: !template.is_active,
       })
-      if (response.success) {
+      if (response.success && response.data) {
         toast.success(`Template ${template.is_active ? "disabled" : "enabled"} successfully`)
-        await loadTemplates()
+        setTemplates(prev => prev.map(t => t.id === template.id ? response.data! : t))
       }
     } catch (error) {
       toast.error("Failed to update template")
@@ -489,9 +489,13 @@ function PaymentGatewayPageContent() {
       const response = await invoiceTemplateService.updateTemplate(template.id, {
         is_default: true,
       })
-      if (response.success) {
+      if (response.success && response.data) {
         toast.success("Default template updated")
-        await loadTemplates()
+        // Update templates: set new default and unset previous default
+        setTemplates(prev => prev.map(t => ({
+          ...t,
+          is_default: t.id === template.id ? true : false,
+        })))
       }
     } catch (error) {
       toast.error("Failed to set default template")

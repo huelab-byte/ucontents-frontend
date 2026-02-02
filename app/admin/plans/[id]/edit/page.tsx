@@ -289,7 +289,7 @@ export default function EditPlanPage() {
                   <FieldContent>
                     <Select
                       value={subscriptionType}
-                      onValueChange={(v) => setSubscriptionType(v as PlanSubscriptionType)}
+                      onValueChange={(v) => v && setSubscriptionType(v as PlanSubscriptionType)}
                     >
                       <SelectTrigger>
                         <SelectValue />

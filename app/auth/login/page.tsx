@@ -31,7 +31,7 @@ export default function LoginPage() {
   const [enabledProviders, setEnabledProviders] = React.useState<string[]>([])
   const [isRequestingMagicLink, setIsRequestingMagicLink] = React.useState(false)
 
-  // Check if magic-link, password reset, and social auth are enabled
+  // Check if magic-link, password reset, and social auth are enabled (optional; login works without this)
   React.useEffect(() => {
     const checkAuthFeatures = async () => {
       try {
@@ -51,8 +51,17 @@ export default function LoginPage() {
             }
           }
         }
-      } catch (error) {
-        console.error("Failed to check auth features:", error)
+      } catch (err) {
+        // Auth features are optional; log a readable message (API error may be { success, message })
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err
+              ? String((err as { message: unknown }).message)
+              : String(err)
+        if (msg && msg !== "{}") {
+          console.error("Failed to check auth features:", msg)
+        }
       }
     }
     checkAuthFeatures()
