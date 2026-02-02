@@ -139,4 +139,5 @@ export interface ScheduledContent {
   thumbnail?: string
   status: 'scheduled' | 'published' | 'error'
   contentText?: string
+  errorMessage?: string | null
 }

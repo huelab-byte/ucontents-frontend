@@ -82,6 +82,21 @@ export const socialConnectionService = {
     })
   },
 
+  /**
+   * Exchange OAuth code for tokens when redirect lands on frontend (main domain).
+   * redirect_uri must match the exact callback URL the provider redirected to (e.g. https://ucontents.com/app/tiktok/profile).
+   */
+  async exchangeCode(
+    provider: SocialProvider,
+    params: { code: string; state: string; redirect_uri?: string }
+  ): Promise<ApiResponse<{ redirect_url: string }>> {
+    return apiClient.post(
+      `/v1/customer/social-connection/${provider}/exchange-code`,
+      params,
+      { skipToast: true }
+    )
+  },
+
   async getChannels(params?: { page?: number; per_page?: number }): Promise<ApiResponse<SocialChannel[]>> {
     return apiClient.get('/v1/customer/social-connection/channels', { params })
   },

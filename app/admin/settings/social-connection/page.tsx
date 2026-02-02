@@ -214,11 +214,13 @@ export default function SocialConnectionSettingsPage() {
     }
   }
 
-  const backendCallbackBase = (path: string) => {
-    // Callbacks must point to the backend (OAuth provider redirects here)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
-    const apiBase = apiUrl.replace("/api", "")
-    return `${apiBase}/api/v1/${path}`
+  // Frontend callback URLs (add these to Valid OAuth Redirect URIs when OAUTH_REDIRECT_USE_FRONTEND=true)
+  const getFrontendCallbackUrl = (path: string) => {
+    const base =
+      (typeof window !== "undefined" ? window.location.origin : null) ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      ""
+    return base ? `${base.replace(/\/$/, "")}/app/${path}` : ""
   }
 
   const copyToClipboard = async (value: string, key: string) => {
@@ -359,7 +361,7 @@ export default function SocialConnectionSettingsPage() {
                           type="url"
                           readOnly
                           disabled
-                          value={backendCallbackBase("customer/social-connection/meta/callback?type=facebook_page")}
+                          value={getFrontendCallbackUrl("facebook/page")}
                           className="bg-muted cursor-not-allowed flex-1"
                         />
                         <Button
@@ -369,7 +371,7 @@ export default function SocialConnectionSettingsPage() {
                           className="shrink-0"
                           onClick={() =>
                             copyToClipboard(
-                              backendCallbackBase("customer/social-connection/meta/callback?type=facebook_page"),
+                              getFrontendCallbackUrl("facebook/page"),
                               "meta_facebook_page",
                             )
                           }
@@ -388,7 +390,7 @@ export default function SocialConnectionSettingsPage() {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Use this for Facebook Page OAuth redirect in your Facebook app settings.
+                        Add this to Valid OAuth Redirect URIs in your Meta app (when OAUTH_REDIRECT_USE_FRONTEND=true).
                       </p>
                     </div>
                   </div>
@@ -438,7 +440,7 @@ export default function SocialConnectionSettingsPage() {
                           type="url"
                           readOnly
                           disabled
-                          value={backendCallbackBase("customer/social-connection/meta/callback?type=facebook_profile")}
+                          value={getFrontendCallbackUrl("facebook/profile")}
                           className="bg-muted cursor-not-allowed flex-1"
                         />
                         <Button
@@ -448,7 +450,7 @@ export default function SocialConnectionSettingsPage() {
                           className="shrink-0"
                           onClick={() =>
                             copyToClipboard(
-                              backendCallbackBase("customer/social-connection/meta/callback?type=facebook_profile"),
+                              getFrontendCallbackUrl("facebook/profile"),
                               "meta_facebook_profile",
                             )
                           }
@@ -467,7 +469,7 @@ export default function SocialConnectionSettingsPage() {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Use this for Facebook Profile OAuth redirect in your Facebook app settings.
+                        Add this to Valid OAuth Redirect URIs in your Meta app (when OAUTH_REDIRECT_USE_FRONTEND=true).
                       </p>
                     </div>
                   </div>
@@ -517,9 +519,7 @@ export default function SocialConnectionSettingsPage() {
                           type="url"
                           readOnly
                           disabled
-                          value={backendCallbackBase(
-                            "customer/social-connection/meta/callback?type=instagram_business",
-                          )}
+                          value={getFrontendCallbackUrl("instagram/profile")}
                           className="bg-muted cursor-not-allowed flex-1"
                         />
                         <Button
@@ -529,7 +529,7 @@ export default function SocialConnectionSettingsPage() {
                           className="shrink-0"
                           onClick={() =>
                             copyToClipboard(
-                              backendCallbackBase("customer/social-connection/meta/callback?type=instagram_business"),
+                              getFrontendCallbackUrl("instagram/profile"),
                               "meta_instagram_business",
                             )
                           }
@@ -548,7 +548,7 @@ export default function SocialConnectionSettingsPage() {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Use this for Instagram Business OAuth redirect (via Meta) in your Facebook app settings.
+                        Add this to Valid OAuth Redirect URIs in your Meta app (when OAUTH_REDIRECT_USE_FRONTEND=true).
                       </p>
                     </div>
                   </div>
@@ -638,7 +638,7 @@ export default function SocialConnectionSettingsPage() {
                         type="url"
                         readOnly
                         disabled
-                        value={backendCallbackBase("customer/social-connection/google/callback")}
+                        value={getFrontendCallbackUrl("youtube/channel")}
                         className="bg-muted cursor-not-allowed flex-1"
                       />
                       <Button
@@ -648,7 +648,7 @@ export default function SocialConnectionSettingsPage() {
                         className="shrink-0"
                         onClick={() =>
                           copyToClipboard(
-                            backendCallbackBase("customer/social-connection/google/callback"),
+                            getFrontendCallbackUrl("youtube/channel"),
                             "google_callback",
                           )
                         }
@@ -667,7 +667,7 @@ export default function SocialConnectionSettingsPage() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Use this for YouTube OAuth redirect in your Google Cloud Console.
+                      Add this to Authorized redirect URIs in Google Cloud Console (when OAUTH_REDIRECT_USE_FRONTEND=true).
                     </p>
                   </div>
                 </div>
@@ -775,7 +775,7 @@ export default function SocialConnectionSettingsPage() {
                         type="url"
                         readOnly
                         disabled
-                        value={backendCallbackBase("customer/social-connection/tiktok/callback")}
+                        value={getFrontendCallbackUrl("tiktok/profile")}
                         className="bg-muted cursor-not-allowed flex-1"
                       />
                       <Button
@@ -785,7 +785,7 @@ export default function SocialConnectionSettingsPage() {
                         className="shrink-0"
                         onClick={() =>
                           copyToClipboard(
-                            backendCallbackBase("customer/social-connection/tiktok/callback"),
+                            getFrontendCallbackUrl("tiktok/profile"),
                             "tiktok_callback",
                           )
                         }
@@ -804,7 +804,7 @@ export default function SocialConnectionSettingsPage() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Use this for TikTok OAuth redirect in your TikTok Developer Portal.
+                      Add this to Redirect URI in your TikTok Developer Portal (when OAUTH_REDIRECT_USE_FRONTEND=true).
                     </p>
                   </div>
                 </div>

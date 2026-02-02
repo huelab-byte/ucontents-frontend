@@ -276,17 +276,25 @@ export function ScheduledContentSection({
                       )}
                     </div>
                   </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
+                  <td className="p-3 relative">
+                    <div
+                      className="flex items-center gap-2 cursor-default"
+                      title={item.status === "error" && item.errorMessage ? item.errorMessage : undefined}
+                    >
                       <div
                         className={cn(
-                          "size-2 rounded-full",
+                          "size-2 rounded-full shrink-0",
                           item.status === "published" && "bg-green-500",
                           item.status === "scheduled" && "bg-blue-500",
                           item.status === "error" && "bg-red-500"
                         )}
                       />
                       <span className="text-xs capitalize">{item.status}</span>
+                      {item.status === "error" && item.errorMessage && (
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px]" title={item.errorMessage}>
+                          — {item.errorMessage}
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>
