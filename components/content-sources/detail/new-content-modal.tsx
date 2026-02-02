@@ -59,6 +59,7 @@ export function NewContentModal({
         const outlineSize = template.outlineSize ?? 3
         onCaptionSettingsChange({
           templateId,
+          enableVideoCaption: captionSettings.enableVideoCaption,
           font: template.font,
           fontSize: template.fontSize,
           fontWeight: template.fontWeight ?? "regular",
@@ -66,7 +67,7 @@ export function NewContentModal({
           outlineEnabled: outlineSize > 0,
           outlineColor: template.outlineColor,
           outlineSize,
-          position: (template.position === "instagram" ? "bottom" : template.position) as "top" | "center" | "bottom",
+          position: ((template.position as string) === "instagram" ? "bottom" : template.position) as "top" | "center" | "bottom",
           positionOffset: template.positionOffset ?? 30,
           wordsPerCaption: template.wordsPerCaption,
           wordHighlighting: template.wordHighlighting,
@@ -467,7 +468,7 @@ export function NewContentModal({
                 </div>
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Position</div>
-                  <div className="text-sm font-medium capitalize">{captionSettings.position === "instagram" ? "Instagram Style" : captionSettings.position}</div>
+                  <div className="text-sm font-medium capitalize">{(captionSettings.position as string) === "instagram" ? "Instagram Style" : captionSettings.position}</div>
                 </div>
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <div className="text-xs text-muted-foreground mb-1">Words per Caption</div>

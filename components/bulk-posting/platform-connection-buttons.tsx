@@ -8,7 +8,7 @@ import type { BulkPostingItem } from "./types"
 
 interface PlatformConnectionButtonsProps {
   connectedTo: BulkPostingItem["connectedTo"]
-  onPlatformConnection: (platform: keyof BulkPostingItem["connectedTo"]) => void
+  onPlatformConnection: (platform: "facebook" | "instagram" | "tiktok" | "youtube") => void
 }
 
 export function PlatformConnectionButtons({
@@ -54,7 +54,7 @@ export function PlatformConnectionButtons({
     <div className="grid grid-cols-2 gap-3">
       {platforms.map((platform) => {
         const IconComponent = platform.icon
-        const isConnected = connectedTo[platform.key]
+        const isConnected = connectedTo?.[platform.key]
 
         return (
           <Button

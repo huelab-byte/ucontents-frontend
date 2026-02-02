@@ -13,6 +13,7 @@ import {
   UploadQueue,
   EditMetadataDialog,
   VideoPreviewModal,
+  ViewMetadataModal,
   CaptionPreviewModal,
   UploadQueueModal,
   NewContentModal,
@@ -43,6 +44,7 @@ export default function ContentSourceDetailsPage() {
   const [processingBatch, setProcessingBatch] = React.useState(false)
   const [captionSettings, setCaptionSettings] = React.useState<CaptionSettings>({
     templateId: "",
+    enableVideoCaption: true,
     font: "Arial",
     fontSize: 32,
     fontWeight: "regular",
@@ -217,6 +219,7 @@ export default function ContentSourceDetailsPage() {
   }, [])
 
   const [editingMetadata, setEditingMetadata] = React.useState<ContentMetadata | null>(null)
+  const [viewingMetadata, setViewingMetadata] = React.useState<ContentMetadata | null>(null)
   const [selectedVideoUrl, setSelectedVideoUrl] = React.useState<string | null>(null)
   const [isNewContentModalOpen, setIsNewContentModalOpen] = React.useState(false)
   const [isUploadQueueModalOpen, setIsUploadQueueModalOpen] = React.useState(false)
@@ -236,6 +239,10 @@ export default function ContentSourceDetailsPage() {
 
   const handleEditMetadata = (item: ContentMetadata) => {
     setEditingMetadata(item)
+  }
+
+  const handleViewMetadata = (item: ContentMetadata) => {
+    setViewingMetadata(item)
   }
 
   const handleDeleteMetadata = (id: string) => {
@@ -301,6 +308,7 @@ export default function ContentSourceDetailsPage() {
             selectedMetadataIds={selectedMetadataIds}
             onToggleSelection={handleToggleMetadataSelection}
             onSelectAll={handleSelectAllMetadata}
+            onView={handleViewMetadata}
             onEdit={handleEditMetadata}
             onDelete={handleDeleteMetadata}
             onBatchDelete={handleBatchDeleteMetadata}
@@ -391,6 +399,11 @@ export default function ContentSourceDetailsPage() {
       <VideoPreviewModal
         videoUrl={selectedVideoUrl}
         onClose={() => setSelectedVideoUrl(null)}
+      />
+
+      <ViewMetadataModal
+        metadata={viewingMetadata}
+        onClose={() => setViewingMetadata(null)}
       />
 
       <CaptionPreviewModal

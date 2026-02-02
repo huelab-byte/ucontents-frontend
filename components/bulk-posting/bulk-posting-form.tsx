@@ -319,12 +319,9 @@ export function BulkPostingForm({
             </FieldLabel>
             <FieldContent>
               <Combobox
-                items={folderItems}
                 multiple
                 value={contentSource}
                 onValueChange={(value) => onContentSourceChange(value || [])}
-                getItemValue={(item) => typeof item === 'object' && item && 'id' in item ? String((item as { id: number; name: string }).id) : String(item)}
-                getItemLabel={(item) => typeof item === 'object' && item && 'name' in item ? (item as { id: number; name: string }).name : String(item)}
               >
                 <ComboboxChips ref={anchorRef} className="w-full">
                   {contentSource.map((source) => {
@@ -352,8 +349,8 @@ export function BulkPostingForm({
                 </ComboboxChips>
                 <ComboboxContent anchor={anchorRef}>
                   <ComboboxEmpty>No folders found.</ComboboxEmpty>
-                  <ComboboxList items={folderItems}>
-                    {(item) => {
+                  <ComboboxList>
+                    {folderItems.map((item) => {
                       const id = typeof item === 'object' && item && 'id' in item ? String((item as { id: number; name: string }).id) : String(item)
                       const name = typeof item === 'object' && item && 'name' in item ? (item as { id: number; name: string }).name : String(item)
                       return (
@@ -361,7 +358,7 @@ export function BulkPostingForm({
                           {name}
                         </ComboboxItem>
                       )
-                    }}
+                    })}
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>

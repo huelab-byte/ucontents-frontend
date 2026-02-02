@@ -159,12 +159,9 @@ export function ConnectionSelector({
 
   return (
     <Combobox
-      items={items}
       multiple
       value={selectedValues}
       onValueChange={handleValueChange}
-      getItemValue={(item) => item.id}
-      getItemLabel={(item) => item.label}
     >
       <ComboboxChips ref={anchorRef} className="w-full min-h-10">
         {selectedValues.map((value) => {
@@ -202,8 +199,8 @@ export function ConnectionSelector({
         {groups.length > 0 && (
           <ComboboxGroup>
             <ComboboxLabel>Groups</ComboboxLabel>
-            <ComboboxList items={items.filter((i) => i.type === "group")}>
-              {(item) => (
+            <ComboboxList>
+              {items.filter((i) => i.type === "group").map((item) => (
                 <ComboboxItem key={item.id} value={item.id}>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted">
@@ -215,15 +212,15 @@ export function ConnectionSelector({
                     </div>
                   </div>
                 </ComboboxItem>
-              )}
+              ))}
             </ComboboxList>
           </ComboboxGroup>
         )}
         {channels.length > 0 && (
           <ComboboxGroup>
             <ComboboxLabel>Channels</ComboboxLabel>
-            <ComboboxList items={items.filter((i) => i.type === "channel")}>
-              {(item) => (
+            <ComboboxList>
+              {items.filter((i) => i.type === "channel").map((item) => (
                 <ComboboxItem key={item.id} value={item.id}>
                   <div className="flex items-center gap-2">
                     {item.avatar ? (
@@ -244,7 +241,7 @@ export function ConnectionSelector({
                     </div>
                   </div>
                 </ComboboxItem>
-              )}
+              ))}
             </ComboboxList>
           </ComboboxGroup>
         )}

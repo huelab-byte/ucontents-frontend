@@ -80,7 +80,7 @@ export function CaptionConfigurationSection({
           outlineEnabled: outlineSize > 0,
           outlineColor: template.outlineColor,
           outlineSize,
-          position: (template.position === "instagram" ? "bottom" : template.position) as "top" | "center" | "bottom",
+          position: ((template.position as string) === "instagram" ? "bottom" : template.position) as "top" | "center" | "bottom",
           positionOffset: template.positionOffset ?? 30,
           wordsPerCaption: template.wordsPerCaption,
           wordHighlighting: template.wordHighlighting,

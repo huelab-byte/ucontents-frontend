@@ -96,13 +96,16 @@ function generateScheduledContent(): ScheduledContent[] {
       .sort(() => Math.random() - 0.5)
       .slice(0, numPlatforms) as Array<"facebook" | "instagram" | "tiktok" | "youtube">
 
+    // Create publishedAt ISO datetime string
+    const publishedAt = new Date(date)
+    publishedAt.setHours(hour, minute, 0, 0)
+    
     content.push({
       id: `content-${i + 21}`,
-      date: date.toISOString().split("T")[0],
-      time: time,
+      publishedAt: publishedAt.toISOString(),
       title: title,
       description: `This is a ${type} post. Generated from content sources.`,
-      type,
+      type: type as "image" | "video" | "text",
       platforms: selectedPlatforms,
       status,
       contentText: contentText,
@@ -111,8 +114,8 @@ function generateScheduledContent(): ScheduledContent[] {
   
   // Sort by date descending (most recent first: today -> future -> past)
   return content.sort((a, b) => {
-    const dateA = new Date(a.date).getTime()
-    const dateB = new Date(b.date).getTime()
+    const dateA = new Date(a.publishedAt).getTime()
+    const dateB = new Date(b.publishedAt).getTime()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const todayTime = today.getTime()

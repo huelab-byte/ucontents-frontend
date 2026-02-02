@@ -78,7 +78,7 @@ function mapApiCaptionToUi(t: ApiCaptionTemplate) {
     fontColor: t.font_color,
     outlineColor: t.outline_color,
     outlineSize: t.outline_size,
-    position: (t.position === "instagram" ? "bottom" : (t.position || "bottom")) as "top" | "center" | "bottom",
+    position: ((t.position as string) === "instagram" ? "bottom" : (t.position || "bottom")) as "top" | "center" | "bottom",
     positionOffset: t.position_offset ?? 30,
     wordsPerCaption: t.words_per_caption,
     wordHighlighting: t.word_highlighting,
@@ -117,7 +117,7 @@ function mapContentSettingsToPromptSettings(s: MediaUploadContentSettings | null
     contentFromFrameExtract: s.content_source_type === "frames",
     contentSourceType,
     headingLength: (() => {
-      const v = s.heading_length
+      const v = s.heading_length as string | number | null | undefined
       if (v == null || v === "") return 10
       if (typeof v === "number") return v
       if (v === "short") return 40
@@ -126,7 +126,7 @@ function mapContentSettingsToPromptSettings(s: MediaUploadContentSettings | null
       return 10
     })(),
     postCaptionLength: (() => {
-      const v = s.caption_length
+      const v = s.caption_length as string | number | null | undefined
       if (v == null || v === "") return 30
       if (typeof v === "number") return v
       if (v === "short") return 125
@@ -140,7 +140,7 @@ function mapContentSettingsToPromptSettings(s: MediaUploadContentSettings | null
 }
 
 function mapPromptSettingsToApi(p: PromptSettings) {
-  const content_source_type =
+  const content_source_type: "prompt" | "title" | "frames" =
     p.contentSourceType === "prompt"
       ? "prompt"
       : p.contentSourceType === "frame_extract"
@@ -266,7 +266,7 @@ export default function MediaUploadFolderDetailsPage() {
               outlineEnabled: outlineSize > 0,
               outlineColor: tpl.outline_color ?? prev.outlineColor,
               outlineSize,
-              position: ((tpl.position === "instagram" ? "bottom" : tpl.position) ?? prev.position) as CaptionSettings["position"],
+              position: (((tpl.position as string) === "instagram" ? "bottom" : tpl.position) ?? prev.position) as CaptionSettings["position"],
               positionOffset: (tpl as { position_offset?: number }).position_offset ?? prev.positionOffset ?? 30,
               wordsPerCaption: tpl.words_per_caption ?? prev.wordsPerCaption,
               wordHighlighting: tpl.word_highlighting ?? prev.wordHighlighting,

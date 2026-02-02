@@ -92,11 +92,12 @@ export function ChannelsWidget({
             ))}
           </ul>
         )}
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link href="/connection">
-            Connect more
-          </Link>
-        </Button>
+        <Link 
+          href="/connection"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-7 gap-1 px-2.5 w-full border border-border bg-background hover:bg-muted hover:text-foreground"
+        >
+          Connect more
+        </Link>
       </CardContent>
     </Card>
   )

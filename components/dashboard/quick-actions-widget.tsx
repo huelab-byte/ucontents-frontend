@@ -34,12 +34,14 @@ export function QuickActionsWidget() {
           {actions.map((action) => {
             const Icon = action.icon
             return (
-              <Button key={action.label} variant="outline" size="sm" className="justify-start h-auto py-3" asChild>
-                <Link href={action.href}>
-                  <HugeiconsIcon icon={Icon} className="size-4 mr-2 shrink-0" />
-                  {action.label}
-                </Link>
-              </Button>
+              <Link 
+                key={action.label}
+                href={action.href}
+                className="inline-flex items-center justify-start whitespace-nowrap rounded-lg text-sm font-medium h-auto py-3 gap-1 px-2.5 border border-border bg-background hover:bg-muted hover:text-foreground"
+              >
+                <HugeiconsIcon icon={Icon} className="size-4 mr-2 shrink-0" />
+                {action.label}
+              </Link>
             )
           })}
         </div>

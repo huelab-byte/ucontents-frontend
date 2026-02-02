@@ -84,7 +84,7 @@ export default function ContentSourcesPage() {
         </div>
 
         {/* Statistics Section */}
-        <ContentSourceStats sources={sources} onCreateSource={handleCreateSource} />
+        <ContentSourceStats sources={sources} />
 
         {/* Sources Table or Empty State */}
         {sources.length > 0 ? (
@@ -96,6 +96,7 @@ export default function ContentSourcesPage() {
             onDelete={handleDeleteSource}
             onNavigate={handleNavigate}
             onPageChange={handlePageChange}
+            onCreateSource={handleCreateSource}
           />
         ) : (
           <EmptyState onCreateSource={handleCreateSource} />

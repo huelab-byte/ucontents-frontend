@@ -13,7 +13,7 @@ export interface BulkPostingCampaign {
   id: string
   brand: {
     name: string
-    logo?: string | null
+    logo?: string
     projectName: string
   }
   connections: ConnectionSelection
@@ -27,7 +27,7 @@ export interface BulkPostingCampaign {
   scheduleCondition?: ScheduleCondition
   scheduleInterval?: number
   repostEnabled?: boolean
-  repostCondition?: ScheduleCondition | null
+  repostCondition?: ScheduleCondition
   repostInterval?: number
   repostMaxCount?: number
   contentSourceConfig?: Record<string, unknown>
@@ -40,7 +40,7 @@ export interface CreateCampaignRequest {
   content_source_type: ContentSourceType
   content_source_config?: {
     folder_ids?: number[]
-    csv_storage_file_id?: number
+    csv_storage_file_id?: number | null
   }
   schedule_condition: ScheduleCondition
   schedule_interval: number
@@ -125,12 +125,18 @@ export const bulkPostingService = {
 
 export interface ScheduledContent {
   id: string
-  date: string
-  time: string
+  publishedAt: string // ISO datetime string
   title: string
   description: string
-  type: string
-  platforms: string[]
+  type: "image" | "video" | "text"
+  platforms: Array<"facebook" | "instagram" | "tiktok" | "youtube">
+  networkResults?: Array<{
+    network: "facebook" | "instagram" | "tiktok" | "youtube"
+    success: boolean
+    postId?: string
+    error?: string | null
+  }>
+  thumbnail?: string
   status: 'scheduled' | 'published' | 'error'
   contentText?: string
 }

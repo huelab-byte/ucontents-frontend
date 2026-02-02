@@ -64,20 +64,24 @@ export function RecentCampaignsWidget({
           <HugeiconsIcon icon={Queue01Icon} className="size-4" />
           Recent Campaigns
         </CardTitle>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/social-automation/bulk-posting" className="gap-1">
-            View all
-            <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5" />
-          </Link>
-        </Button>
+        <Link 
+          href="/social-automation/bulk-posting" 
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-7 gap-1 px-2.5 hover:bg-muted hover:text-foreground"
+        >
+          View all
+          <HugeiconsIcon icon={ArrowRight01Icon} className="size-3.5" />
+        </Link>
       </CardHeader>
       <CardContent>
         {recent.length === 0 ? (
           <>
             <p className="text-sm text-muted-foreground mb-4">No campaigns yet. Create your first campaign to get started.</p>
-            <Button size="sm" asChild>
-              <Link href="/social-automation/bulk-posting">Create campaign</Link>
-            </Button>
+            <Link 
+              href="/social-automation/bulk-posting"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-7 gap-1 px-2.5 bg-primary text-primary-foreground hover:bg-primary/80"
+            >
+              Create campaign
+            </Link>
           </>
         ) : (
           <ul className="space-y-4">

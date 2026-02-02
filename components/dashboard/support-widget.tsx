@@ -68,15 +68,19 @@ export function SupportWidget({
           <p className="text-sm text-muted-foreground mb-4">No open tickets.</p>
         )}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" asChild>
-            <Link href="/support/tickets">View tickets</Link>
-          </Button>
-          <Button size="sm" className="flex-1" asChild>
-            <Link href="/support/tickets/new">
-              <HugeiconsIcon icon={PlusSignIcon} className="size-4 mr-2 shrink-0" />
-              New ticket
-            </Link>
-          </Button>
+          <Link 
+            href="/support/tickets"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-7 gap-1 px-2.5 flex-1 border border-border bg-background hover:bg-muted hover:text-foreground"
+          >
+            View tickets
+          </Link>
+          <Link 
+            href="/support/tickets/new"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-7 gap-1 px-2.5 flex-1 bg-primary text-primary-foreground hover:bg-primary/80"
+          >
+            <HugeiconsIcon icon={PlusSignIcon} className="size-4 mr-2 shrink-0" />
+            New ticket
+          </Link>
         </div>
       </CardContent>
     </Card>

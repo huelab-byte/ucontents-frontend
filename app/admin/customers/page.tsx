@@ -272,12 +272,13 @@ function CustomersListPageContent() {
                               {formatDate(customer.last_login_at)}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/admin/customers/${customer.id}`}>
-                                  <HugeiconsIcon icon={ViewIcon} className="size-4 mr-1" />
-                                  View profile
-                                </Link>
-                              </Button>
+                              <Link 
+                                href={`/admin/customers/${customer.id}`}
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-7 gap-1 px-2.5 hover:bg-muted hover:text-foreground"
+                              >
+                                <HugeiconsIcon icon={ViewIcon} className="size-4 mr-1" />
+                                View profile
+                              </Link>
                             </td>
                           </tr>
                         )
