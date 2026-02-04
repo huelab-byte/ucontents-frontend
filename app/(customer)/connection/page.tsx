@@ -15,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogDescription,
 } from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
@@ -39,6 +40,8 @@ import {
   CheckmarkCircle01Icon,
   PauseIcon,
   DeleteIcon,
+  EditIcon,
+  SettingsIcon,
 } from "@hugeicons/core-free-icons"
 import { FaFacebook, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa"
 
@@ -79,7 +82,12 @@ function ConnectionPageContent() {
   const [addOpen, setAddOpen] = React.useState(false)
   const [newGroupOpen, setNewGroupOpen] = React.useState(false)
   const [newGroupName, setNewGroupName] = React.useState("")
-  
+
+  // Group Management State
+  const [manageGroupsOpen, setManageGroupsOpen] = React.useState(false)
+  const [editingGroupId, setEditingGroupId] = React.useState<number | null>(null)
+  const [editingGroupName, setEditingGroupName] = React.useState("")
+
   // Search and filter state
   const [searchQuery, setSearchQuery] = React.useState("")
   const [filterProviders, setFilterProviders] = React.useState<SocialProvider[]>([])
@@ -421,7 +429,7 @@ function ConnectionPageContent() {
         const selectedIds = Object.keys(selected)
           .map(Number)
           .filter((id) => selected[id])
-        
+
         // If there are selected connections, move them to the new group
         if (selectedIds.length > 0) {
           const moveRes = await socialConnectionService.bulkAssignGroup(selectedIds, newGroup.id)
@@ -440,7 +448,7 @@ function ConnectionPageContent() {
         } else {
           toast.success("Group created successfully")
         }
-        
+
         // Add the new group to local state
         setGroups((prev) => [...prev, newGroup])
         setNewGroupName("")
@@ -450,6 +458,41 @@ function ConnectionPageContent() {
       }
     } catch (error) {
       toast.error("Failed to create group")
+    }
+  }
+
+  const handleUpdateGroup = async (id: number) => {
+    if (!editingGroupName.trim()) return
+    try {
+      const res = await socialConnectionService.updateGroup(id, editingGroupName.trim())
+      if (res.success && res.data) {
+        setGroups((prev) => prev.map((g) => (g.id === id ? res.data! : g)))
+        setEditingGroupId(null)
+        setEditingGroupName("")
+        toast.success("Group updated successfully")
+      } else {
+        toast.error(res.message || "Failed to update group")
+      }
+    } catch (error) {
+      toast.error("Failed to update group")
+    }
+  }
+
+  const handleDeleteGroup = async (id: number) => {
+    try {
+      const res = await socialConnectionService.deleteGroup(id)
+      if (res.success) {
+        setGroups((prev) => prev.filter((g) => g.id !== id))
+        // Update channels to remove group association
+        setChannels((prev) => prev.map((ch) => (ch.group_id === id ? { ...ch, group_id: null } : ch)))
+        // Reset filter if we executed delete on the currently filtered group
+        if (filterGroupId === id) setFilterGroupId(null)
+        toast.success("Group deleted successfully")
+      } else {
+        toast.error(res.message || "Failed to delete group")
+      }
+    } catch (error) {
+      toast.error("Failed to delete group")
     }
   }
 
@@ -512,9 +555,12 @@ function ConnectionPageContent() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setNewGroupOpen(true)}>
-              New Group
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setManageGroupsOpen(true)}>
+                <HugeiconsIcon icon={SettingsIcon} className="size-4 mr-2" />
+                Manage Groups
+              </Button>
+            </div>
             <Button onClick={() => setAddOpen(true)}>
               <HugeiconsIcon icon={PlusSignIcon} className="size-4 mr-2" />
               Add connections
@@ -675,11 +721,10 @@ function ConnectionPageContent() {
             <button
               type="button"
               onClick={() => setFilterGroupId(null)}
-              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                filterGroupId === null
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background hover:bg-muted border-border"
-              }`}
+              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${filterGroupId === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background hover:bg-muted border-border"
+                }`}
             >
               All connections
             </button>
@@ -688,11 +733,10 @@ function ConnectionPageContent() {
                 key={group.id}
                 type="button"
                 onClick={() => setFilterGroupId(group.id)}
-                className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                  filterGroupId === group.id
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background hover:bg-muted border-border"
-                }`}
+                className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${filterGroupId === group.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background hover:bg-muted border-border"
+                  }`}
               >
                 {group.name}
               </button>
@@ -945,11 +989,10 @@ function ConnectionPageContent() {
                   return (
                     <Card
                       key={ch.key}
-                      className={`overflow-hidden border-2 transition-all cursor-pointer ${
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-transparent hover:border-border"
-                      }`}
+                      className={`overflow-hidden border-2 transition-all cursor-pointer ${isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-transparent hover:border-border"
+                        }`}
                       onClick={() =>
                         setSelectionSelected((prev) => ({
                           ...prev,
@@ -1098,6 +1141,125 @@ function ConnectionPageContent() {
                   Create
                 </Button>
               )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Manage Groups Dialog */}
+        <AlertDialog open={manageGroupsOpen} onOpenChange={setManageGroupsOpen}>
+          <AlertDialogContent className="!w-[500px] !max-w-[500px] max-w-[calc(100vw-2rem)] mx-4">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Manage Groups</AlertDialogTitle>
+              <AlertDialogDescription>
+                Create, edit, or delete connection groups.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-4 mt-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="New group name"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      // We can reuse handleCreateGroup but need to handle the manageGroupsOpen state
+                      // Actually handleCreateGroup closes newGroupOpen, not manageGroupsOpen.
+                      // Let's create a local wrapper or just use duplicated logic for simplicity here?
+                      // Reuse handleCreateGroup since it adds to `groups` state.
+                      // But handleCreateGroup closes `newGroupOpen`, which is fine (it's likely false).
+                      // But we want to keep `manageGroupsOpen` open.
+                      // Let's copy the create logic slightly modified or use a new handler.
+                      // For simplicity, let's just make a dedicated create handler here to avoid side effects.
+                      if (!newGroupName.trim()) return
+                      socialConnectionService.createGroup(newGroupName.trim()).then(res => {
+                        if (res.success && res.data) {
+                          setGroups(prev => [...prev, res.data!])
+                          setNewGroupName("")
+                          toast.success("Group created")
+                        } else {
+                          toast.error(res.message || "Failed to create group")
+                        }
+                      })
+                    }
+                  }}
+                />
+                <Button
+                  onClick={() => {
+                    if (!newGroupName.trim()) return
+                    socialConnectionService.createGroup(newGroupName.trim()).then(res => {
+                      if (res.success && res.data) {
+                        setGroups(prev => [...prev, res.data!])
+                        setNewGroupName("")
+                        toast.success("Group created")
+                      } else {
+                        toast.error(res.message || "Failed to create group")
+                      }
+                    })
+                  }}
+                  disabled={!newGroupName.trim()}
+                >
+                  Create
+                </Button>
+              </div>
+
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {groups.length === 0 ? (
+                  <p className="text-sm text-center text-muted-foreground py-4">No groups created yet.</p>
+                ) : (
+                  groups.map((group) => (
+                    <div key={group.id} className="flex items-center justify-between p-2 border rounded-md bg-card">
+                      {editingGroupId === group.id ? (
+                        <div className="flex items-center gap-2 flex-1 animate-in fade-in zoom-in-95 duration-200">
+                          <Input
+                            value={editingGroupName}
+                            onChange={(e) => setEditingGroupName(e.target.value)}
+                            className="h-8 flex-1"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleUpdateGroup(group.id)
+                              if (e.key === "Escape") setEditingGroupId(null)
+                            }}
+                          />
+                          <Button size="sm" onClick={() => handleUpdateGroup(group.id)}>Save</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingGroupId(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="font-medium text-sm pl-2">{group.name}</span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                setEditingGroupId(group.id)
+                                setEditingGroupName(group.name)
+                              }}
+                            >
+                              <HugeiconsIcon icon={EditIcon} className="size-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteGroup(group.id)}
+                            >
+                              <HugeiconsIcon icon={DeleteIcon} className="size-4" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <AlertDialogFooter className="mt-6">
+              <AlertDialogCancel onClick={() => setManageGroupsOpen(false)}>
+                Close
+              </AlertDialogCancel>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

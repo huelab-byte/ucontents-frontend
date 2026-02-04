@@ -74,6 +74,13 @@ const customerMenuItems = [
     items: [] as { title: string; url: string; icon: any }[],
   },
   {
+    title: "AI Chat",
+    icon: MachineRobotIcon,
+    url: "/ai-chat",
+    items: [],
+    permission: "use_ai_chat",
+  },
+  {
     title: "Connection",
     icon: Link01Icon,
     url: "/connection",
@@ -157,6 +164,11 @@ const customerConfigItems = [
     icon: Settings01Icon,
     items: [
       {
+        title: "AI Settings",
+        url: "/configuration/ai-settings",
+        icon: MachineRobotIcon,
+      },
+      {
         title: "Help & Resources",
         url: "/support/tutorials",
         icon: HelpCircleIcon,
@@ -223,11 +235,12 @@ export function CustomerSidebar() {
       if (item.title === "Overlay") return { ...item, items: overlayItems }
       return item
     }).filter((item) => {
+      if ((item as any).permission && !hasPermission((item as any).permission)) return false
       if (item.title === "Library" && libraryItems.length === 0) return false
       if (item.title === "Overlay" && overlayItems.length === 0) return false
       return true
     })
-  }, [libraryItems, overlayItems])
+  }, [libraryItems, overlayItems, hasPermission])
 
   React.useEffect(() => {
     // Calculate which items should be open based on current pathname
@@ -476,11 +489,11 @@ export function CustomerSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
         )}
-        <NavUser 
-          user={{ 
-            name: user?.name || "Customer", 
+        <NavUser
+          user={{
+            name: user?.name || "Customer",
             email: user?.email || "customer@example.com"
-          }} 
+          }}
           menuItems={customerProfileItems.map(item => ({
             title: item.title,
             icon: item.icon,

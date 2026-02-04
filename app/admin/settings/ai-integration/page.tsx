@@ -34,6 +34,7 @@ import {
   KeyIcon,
   EyeIcon,
   SettingsIcon,
+  PlayIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import {
@@ -42,6 +43,7 @@ import {
   type AiUsageLog,
   type AiProvider,
   type AiApiKey,
+  type AiApiKeyScope,
 } from "@/lib/api"
 import { toast } from "@/lib/toast"
 import { usePermission } from "@/lib/hooks/use-permission"
@@ -80,6 +82,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Field, FieldGroup, FieldLabel, FieldContent } from "@/components/ui/field"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type Tab = "overview" | "api-keys"
 
@@ -102,6 +105,7 @@ export default function AiIntegrationPage() {
   const [apiKeysPage, setApiKeysPage] = React.useState(1)
   const [providerFilter, setProviderFilter] = React.useState<string>("all")
   const [activeFilter, setActiveFilter] = React.useState<string>("all")
+  const [availableScopes, setAvailableScopes] = React.useState<AiApiKeyScope[]>([])
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
@@ -120,9 +124,12 @@ export default function AiIntegrationPage() {
     priority: 0,
     rate_limit_per_minute: "",
     rate_limit_per_day: "",
+    scopes: [] as string[],
   })
   const [showApiKey, setShowApiKey] = React.useState(false)
   const [selectedProvider, setSelectedProvider] = React.useState<AiProvider | null>(null)
+  const [testingApiKeyId, setTestingApiKeyId] = React.useState<number | null>(null)
+  const [testResult, setTestResult] = React.useState<{ success: boolean; message: string; responseTime?: number } | null>(null)
 
   const canViewUsage = hasPermission("view_ai_usage")
   const canManageApiKeys = hasPermission("manage_ai_api_keys")
@@ -136,13 +143,15 @@ export default function AiIntegrationPage() {
     if (canManageApiKeys && activeTab === "api-keys") {
       loadProviders()
       loadApiKeys()
+      loadAvailableScopes()
     }
   }, [canViewUsage, canManageApiKeys, activeTab, dateRange, statusFilter, currentPage, apiKeysPage, providerFilter, activeFilter])
 
-  // Load providers once on mount if user has permission
+  // Load providers and scopes once on mount if user has permission
   React.useEffect(() => {
     if (canManageApiKeys) {
       loadProviders()
+      loadAvailableScopes()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManageApiKeys])
@@ -201,9 +210,20 @@ export default function AiIntegrationPage() {
     }
   }
 
+  const loadAvailableScopes = async () => {
+    try {
+      const response = await aiIntegrationService.getAvailableScopes()
+      if (response.success && response.data) {
+        setAvailableScopes(response.data || [])
+      }
+    } catch (error) {
+      console.error("Failed to load available scopes:", error)
+    }
+  }
+
   const initializeProviders = async () => {
     if (providersInitializing) return // Prevent multiple simultaneous initializations
-    
+
     try {
       setProvidersInitializing(true)
       const response = await aiIntegrationService.initializeProviders()
@@ -262,6 +282,7 @@ export default function AiIntegrationPage() {
         priority: formData.priority,
         rate_limit_per_minute: formData.rate_limit_per_minute ? parseInt(formData.rate_limit_per_minute) : undefined,
         rate_limit_per_day: formData.rate_limit_per_day ? parseInt(formData.rate_limit_per_day) : undefined,
+        scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
       })
       if (response.success && response.data) {
         setApiKeys((prev) => [response.data!, ...prev])
@@ -289,6 +310,7 @@ export default function AiIntegrationPage() {
         priority: formData.priority,
         rate_limit_per_minute: formData.rate_limit_per_minute ? parseInt(formData.rate_limit_per_minute) : undefined,
         rate_limit_per_day: formData.rate_limit_per_day ? parseInt(formData.rate_limit_per_day) : undefined,
+        scopes: formData.scopes,
       })
       if (response.success && response.data) {
         setApiKeys((prev) => prev.map((k) => k.id === selectedApiKey.id ? response.data! : k))
@@ -316,7 +338,7 @@ export default function AiIntegrationPage() {
 
   const handleToggleApiKey = async (apiKey: AiApiKey, enable: boolean) => {
     try {
-      const response = enable 
+      const response = enable
         ? await aiIntegrationService.enableApiKey(apiKey.id)
         : await aiIntegrationService.disableApiKey(apiKey.id)
       if (response.success && response.data) {
@@ -324,6 +346,44 @@ export default function AiIntegrationPage() {
       }
     } catch (error: any) {
       console.error("Failed to toggle API key:", error)
+    }
+  }
+
+  const handleTestApiKey = async (apiKeyId: number) => {
+    setTestingApiKeyId(apiKeyId)
+    setTestResult(null)
+    try {
+      const response = await aiIntegrationService.testApiKey(apiKeyId)
+      if (response.success && response.data) {
+        setTestResult({
+          success: response.data.success,
+          message: response.data.success
+            ? `API key is working! Response time: ${response.data.response_time_ms}ms`
+            : response.data.error || 'Test failed',
+          responseTime: response.data.response_time_ms,
+        })
+        if (response.data.success) {
+          toast.success(`API key test passed! (${response.data.response_time_ms}ms)`)
+        } else {
+          toast.error(response.data.error || 'API key test failed')
+        }
+      } else {
+        const errorMsg = Array.isArray(response.errors) ? response.errors[0] : (response.errors || 'Test failed')
+        setTestResult({
+          success: false,
+          message: errorMsg,
+        })
+        toast.error(errorMsg || 'API key test failed')
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to test API key'
+      setTestResult({
+        success: false,
+        message: errorMessage,
+      })
+      toast.error(errorMessage)
+    } finally {
+      setTestingApiKeyId(null)
     }
   }
 
@@ -342,11 +402,17 @@ export default function AiIntegrationPage() {
       priority: 0,
       rate_limit_per_minute: "",
       rate_limit_per_day: "",
+      scopes: [],
     })
     setShowApiKey(false)
   }
 
-  const handleProviderChange = (providerId: string) => {
+  const handleProviderChange = (providerId: string | null) => {
+    if (!providerId) {
+      setSelectedProvider(null)
+      setFormData({ ...formData, provider_id: "" })
+      return
+    }
     const provider = providers.find(p => p.id.toString() === providerId)
     setSelectedProvider(provider || null)
     setFormData({ ...formData, provider_id: providerId })
@@ -357,11 +423,13 @@ export default function AiIntegrationPage() {
     const fields: Record<string, { required: boolean; show: boolean; label: string; placeholder: string }> = {
       endpoint_url: {
         required: providerSlug === 'azure_openai',
-        show: ['azure_openai', 'openai'].includes(providerSlug),
-        label: 'Endpoint URL',
-        placeholder: providerSlug === 'azure_openai' 
-          ? 'https://your-resource.openai.azure.com' 
-          : 'Custom endpoint URL (optional)'
+        show: ['azure_openai', 'openai', 'ucontents'].includes(providerSlug),
+        label: providerSlug === 'ucontents' ? 'API Endpoint' : 'Endpoint URL',
+        placeholder: providerSlug === 'azure_openai'
+          ? 'https://your-resource.openai.azure.com'
+          : providerSlug === 'ucontents'
+            ? 'https://gpt.ucontents.com (default)'
+            : 'Custom endpoint URL (optional)'
       },
       organization_id: {
         required: false,
@@ -401,6 +469,7 @@ export default function AiIntegrationPage() {
       priority: apiKey.priority,
       rate_limit_per_minute: apiKey.rate_limit_per_minute?.toString() || "",
       rate_limit_per_day: apiKey.rate_limit_per_day?.toString() || "",
+      scopes: apiKey.scopes || [],
     })
     setEditDialogOpen(true)
   }
@@ -409,9 +478,18 @@ export default function AiIntegrationPage() {
     resetForm()
     // Ensure providers are loaded (but don't wait, open dialog immediately)
     if (providers.length === 0) {
-      loadProviders().catch(() => {})
+      loadProviders().catch(() => { })
     }
     setCreateDialogOpen(true)
+  }
+
+  const toggleScope = (scope: string) => {
+    setFormData(prev => ({
+      ...prev,
+      scopes: prev.scopes.includes(scope)
+        ? prev.scopes.filter(s => s !== scope)
+        : [...prev.scopes, scope]
+    }))
   }
 
   const formatCurrency = (amount: number | null) => {
@@ -526,240 +604,240 @@ export default function AiIntegrationPage() {
         {activeTab === "overview" && (
           <>
 
-        {/* Statistics Cards */}
-        {statistics && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-                <HugeiconsIcon icon={Analytics02Icon} className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(statistics.total_requests)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {statistics.successful_requests} successful
-                </p>
-              </CardContent>
-            </Card>
+            {/* Statistics Cards */}
+            {statistics && (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+                    <HugeiconsIcon icon={Analytics02Icon} className="size-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatNumber(statistics.total_requests)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {statistics.successful_requests} successful
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-                <HugeiconsIcon icon={Database02Icon} className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(statistics.total_tokens)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Across all providers
-                </p>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
+                    <HugeiconsIcon icon={Database02Icon} className="size-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatNumber(statistics.total_tokens)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Across all providers
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-                <HugeiconsIcon icon={Analytics02Icon} className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(statistics.total_cost)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Estimated cost
-                </p>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+                    <HugeiconsIcon icon={Analytics02Icon} className="size-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(statistics.total_cost)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Estimated cost
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {statistics.total_requests > 0
-                    ? Math.round((statistics.successful_requests / statistics.total_requests) * 100)
-                    : 0}
-                  %
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {statistics.failed_requests} failed requests
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Provider Statistics */}
-        {statistics && statistics.by_provider.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage by Provider</CardTitle>
-              <CardDescription>Breakdown of usage across AI providers</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {statistics.by_provider.map((provider) => (
-                  <div key={provider.provider_slug} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium capitalize">{provider.provider_slug.replace("_", " ")}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatNumber(provider.requests)} requests • {formatNumber(provider.tokens)} tokens
-                      </div>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                    <HugeiconsIcon icon={CheckmarkCircle01Icon} className="size-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {statistics.total_requests > 0
+                        ? Math.round((statistics.successful_requests / statistics.total_requests) * 100)
+                        : 0}
+                      %
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">{formatCurrency(provider.cost)}</div>
-                      <div className="text-sm text-muted-foreground">Cost</div>
-                    </div>
-                  </div>
-                ))}
+                    <p className="text-xs text-muted-foreground">
+                      {statistics.failed_requests} failed requests
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Model Statistics */}
-        {statistics && statistics.by_model.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage by Model</CardTitle>
-              <CardDescription>Breakdown of usage across AI models</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {statistics.by_model.map((model) => (
-                  <div key={model.model} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium">{model.model}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatNumber(model.requests)} requests • {formatNumber(model.tokens)} tokens
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{formatCurrency(model.cost)}</div>
-                      <div className="text-sm text-muted-foreground">Cost</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Usage Logs */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div>
-                <CardTitle>Usage Logs</CardTitle>
-                <CardDescription>Recent AI API calls and their status</CardDescription>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Input
-                  type="date"
-                  placeholder="From"
-                  value={dateRange.from || ""}
-                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                  className="w-full sm:w-auto"
-                />
-                <Input
-                  type="date"
-                  placeholder="To"
-                  value={dateRange.to || ""}
-                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                  className="w-full sm:w-auto"
-                />
-                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value || "all")}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="success">Success</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
-                    <SelectItem value="rate_limited">Rate Limited</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading usage logs...</div>
-              </div>
-            ) : usageLogs.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <HugeiconsIcon icon={MachineRobotIcon} className="size-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No usage logs found</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Provider</TableHead>
-                      <TableHead>Model</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Tokens</TableHead>
-                      <TableHead>Cost</TableHead>
-                      <TableHead>Response Time</TableHead>
-                      <TableHead>Time</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {usageLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium capitalize">
-                          {log.provider_slug.replace("_", " ")}
-                        </TableCell>
-                        <TableCell>{log.model}</TableCell>
-                        <TableCell>{getStatusBadge(log.status)}</TableCell>
-                        <TableCell>{formatNumber(log.total_tokens)}</TableCell>
-                        <TableCell>{formatCurrency(log.cost)}</TableCell>
-                        <TableCell>
-                          {log.response_time_ms
-                            ? `${log.response_time_ms}ms`
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(log.created_at)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {pagination && pagination.last_page > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-muted-foreground">
-                      Showing {pagination.current_page} of {pagination.last_page} pages
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pagination.current_page === 1}
-                        onClick={() => setCurrentPage(pagination.current_page - 1)}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pagination.current_page === pagination.last_page}
-                        onClick={() => setCurrentPage(pagination.current_page + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
             )}
-          </CardContent>
-        </Card>
+
+            {/* Provider Statistics */}
+            {statistics && statistics.by_provider.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Usage by Provider</CardTitle>
+                  <CardDescription>Breakdown of usage across AI providers</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {statistics.by_provider.map((provider) => (
+                      <div key={provider.provider_slug} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium capitalize">{provider.provider_slug.replace("_", " ")}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatNumber(provider.requests)} requests • {formatNumber(provider.tokens)} tokens
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">{formatCurrency(provider.cost)}</div>
+                          <div className="text-sm text-muted-foreground">Cost</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Model Statistics */}
+            {statistics && statistics.by_model.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Usage by Model</CardTitle>
+                  <CardDescription>Breakdown of usage across AI models</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {statistics.by_model.map((model) => (
+                      <div key={model.model} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{model.model}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatNumber(model.requests)} requests • {formatNumber(model.tokens)} tokens
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">{formatCurrency(model.cost)}</div>
+                          <div className="text-sm text-muted-foreground">Cost</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Usage Logs */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div>
+                    <CardTitle>Usage Logs</CardTitle>
+                    <CardDescription>Recent AI API calls and their status</CardDescription>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Input
+                      type="date"
+                      placeholder="From"
+                      value={dateRange.from || ""}
+                      onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                      className="w-full sm:w-auto"
+                    />
+                    <Input
+                      type="date"
+                      placeholder="To"
+                      value={dateRange.to || ""}
+                      onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                      className="w-full sm:w-auto"
+                    />
+                    <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value || "all")}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="success">Success</SelectItem>
+                        <SelectItem value="error">Error</SelectItem>
+                        <SelectItem value="rate_limited">Rate Limited</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-muted-foreground">Loading usage logs...</div>
+                  </div>
+                ) : usageLogs.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <HugeiconsIcon icon={MachineRobotIcon} className="size-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">No usage logs found</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Provider</TableHead>
+                          <TableHead>Model</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Tokens</TableHead>
+                          <TableHead>Cost</TableHead>
+                          <TableHead>Response Time</TableHead>
+                          <TableHead>Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {usageLogs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="font-medium capitalize">
+                              {log.provider_slug.replace("_", " ")}
+                            </TableCell>
+                            <TableCell>{log.model}</TableCell>
+                            <TableCell>{getStatusBadge(log.status)}</TableCell>
+                            <TableCell>{formatNumber(log.total_tokens)}</TableCell>
+                            <TableCell>{formatCurrency(log.cost)}</TableCell>
+                            <TableCell>
+                              {log.response_time_ms
+                                ? `${log.response_time_ms}ms`
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {formatDate(log.created_at)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {pagination && pagination.last_page > 1 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {pagination.current_page} of {pagination.last_page} pages
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={pagination.current_page === 1}
+                            onClick={() => setCurrentPage(pagination.current_page - 1)}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={pagination.current_page === pagination.last_page}
+                            onClick={() => setCurrentPage(pagination.current_page + 1)}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
 
@@ -828,6 +906,7 @@ export default function AiIntegrationPage() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Provider</TableHead>
+                          <TableHead>Scopes</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Priority</TableHead>
                           <TableHead>Requests</TableHead>
@@ -845,6 +924,24 @@ export default function AiIntegrationPage() {
                                 <Badge variant="outline">{apiKey.provider.name}</Badge>
                               ) : (
                                 "N/A"
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {apiKey.scopes && apiKey.scopes.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                  {apiKey.scope_names?.slice(0, 2).map((name, idx) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs">
+                                      {name}
+                                    </Badge>
+                                  ))}
+                                  {apiKey.scopes.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{apiKey.scopes.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">All Tasks</span>
                               )}
                             </TableCell>
                             <TableCell>
@@ -880,6 +977,10 @@ export default function AiIntegrationPage() {
                                       className="size-4 mr-2"
                                     />
                                     {apiKey.is_active ? "Disable" : "Enable"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleTestApiKey(apiKey.id)}>
+                                    <HugeiconsIcon icon={PlayIcon} className="size-4 mr-2" />
+                                    Test Connection
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => editApiKey(apiKey)}>
                                     <HugeiconsIcon icon={EditIcon} className="size-4 mr-2" />
@@ -933,14 +1034,14 @@ export default function AiIntegrationPage() {
             </Card>
 
             {/* Create API Key Dialog */}
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add API Key</DialogTitle>
-                  <DialogDescription>
-                    Add a new API key for an AI provider
-                  </DialogDescription>
-                </DialogHeader>
+            <AlertDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <AlertDialogContent className="max-h-[90vh] overflow-y-auto" style={{ maxWidth: 585 }}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Add API Key</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Enter the details for your new API key.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
                 <form onSubmit={handleCreateApiKey}>
                   <div className="space-y-4">
                     <Field>
@@ -951,9 +1052,9 @@ export default function AiIntegrationPage() {
                             <p className="text-sm text-muted-foreground">
                               No providers found. Please initialize providers first.
                             </p>
-                            <Button 
-                              type="button" 
-                              onClick={initializeProviders} 
+                            <Button
+                              type="button"
+                              onClick={initializeProviders}
                               variant="outline"
                               disabled={providersInitializing}
                             >
@@ -990,6 +1091,11 @@ export default function AiIntegrationPage() {
                         {selectedProvider.slug === 'azure_openai' && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                             ⚠️ Endpoint URL is required for Azure OpenAI
+                          </p>
+                        )}
+                        {selectedProvider.slug === 'ucontents' && (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                            🏠 Self-hosted AI: Mistral (text) + Moondream (vision)
                           </p>
                         )}
                       </div>
@@ -1141,57 +1247,157 @@ export default function AiIntegrationPage() {
                         </FieldContent>
                       </Field>
                     </div>
+
+                    {/* Scopes Section */}
+                    {availableScopes.length > 0 && (
+                      <Field>
+                        <FieldLabel>
+                          Allowed Scopes
+                          <span className="font-normal text-muted-foreground ml-2">(Optional)</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Select which AI tasks this API key can be used for. Leave empty to allow all tasks.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-muted/50 rounded-lg">
+                            {availableScopes.map((scope) => {
+                              // Determine compatibility
+                              let isCompatible = true;
+                              let warningMessage = "";
+
+                              if (selectedProvider) {
+                                // Vision checks
+                                if (scope.requires_vision) {
+                                  const hasVision = selectedProvider.slug === 'ucontents' ||
+                                    (selectedProvider.vision_models?.length ?? 0) > 0;
+                                  if (!hasVision) {
+                                    isCompatible = false;
+                                    warningMessage = "This provider may not support vision models";
+                                  }
+                                }
+
+                                // Embedding checks
+                                if (scope.requires_embedding_model) {
+                                  const hasEmbeddings = selectedProvider.slug === 'openai' ||
+                                    selectedProvider.slug === 'azure_openai'; // Simplified check
+                                  if (!hasEmbeddings && selectedProvider.slug === 'ucontents') {
+                                    isCompatible = false;
+                                    warningMessage = "Ucontents does not currently support embeddings";
+                                  }
+                                }
+                              }
+
+                              return (
+                                <label
+                                  key={scope.slug}
+                                  className={`flex items-start gap-3 p-2 rounded-md transition-colors cursor-pointer ${isCompatible ? 'hover:bg-background/50' : 'opacity-60 bg-red-50/5 dark:bg-red-900/10'
+                                    }`}
+                                  title={warningMessage}
+                                >
+                                  <Checkbox
+                                    checked={formData.scopes.includes(scope.slug)}
+                                    onCheckedChange={() => toggleScope(scope.slug)}
+                                    className="mt-0.5"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <div className="font-medium text-sm">{scope.name}</div>
+                                      {!isCompatible && (
+                                        <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                          ⚠️ Compatibility
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground line-clamp-2">
+                                      {scope.description}
+                                    </div>
+                                    {scope.module && (
+                                      <Badge variant="outline" className="mt-1 text-xs">
+                                        {scope.module}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {formData.scopes.length > 0 && (
+                            <div className="mt-2 text-sm text-muted-foreground">
+                              Selected: {formData.scopes.length} scope{formData.scopes.length !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </FieldContent>
+                      </Field>
+                    )}
                   </div>
-                  <DialogFooter className="mt-6">
+                  <AlertDialogFooter className="mt-6">
                     <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
                       Cancel
                     </Button>
                     <Button type="submit">Create API Key</Button>
-                  </DialogFooter>
+                  </AlertDialogFooter>
                 </form>
-              </DialogContent>
-            </Dialog>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Edit API Key Dialog */}
-            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Edit API Key</DialogTitle>
-                  <DialogDescription>
-                    Update API key details
-                  </DialogDescription>
-                </DialogHeader>
+            <AlertDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <AlertDialogContent className="max-h-[90vh] overflow-y-auto" style={{ maxWidth: 585 }}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Edit API Key</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Update the details for this API key.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
                 <form onSubmit={handleUpdateApiKey}>
-                  <div className="space-y-4">
-                    {selectedApiKey?.provider && (
-                      <div className="p-3 bg-muted rounded-lg">
-                        <p className="text-sm font-medium mb-1">{selectedApiKey.provider.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Provider cannot be changed after creation
-                        </p>
-                      </div>
-                    )}
+                  <div className="grid gap-4 py-4">
+                    <Field>
+                      <FieldLabel>Provider</FieldLabel>
+                      <FieldContent>
+                        <Select
+                          value={formData.provider_id}
+                          onValueChange={handleProviderChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {providers.map((provider) => (
+                              <SelectItem key={provider.id} value={provider.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  {provider.slug === 'openai' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                  {provider.slug === 'anthropic' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                  {provider.slug === 'google' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                  {provider.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FieldContent>
+                    </Field>
 
                     <Field>
-                      <FieldLabel>Name *</FieldLabel>
+                      <FieldLabel>Name</FieldLabel>
                       <FieldContent>
                         <Input
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="My API Key"
                           required
                         />
                       </FieldContent>
                     </Field>
 
                     <Field>
-                      <FieldLabel>API Key (Leave empty to keep current)</FieldLabel>
+                      <FieldLabel>API Key</FieldLabel>
                       <FieldContent>
                         <div className="relative">
                           <Input
                             type={showApiKey ? "text" : "password"}
                             value={formData.api_key}
                             onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                            placeholder="Enter new API key or leave empty"
+                            placeholder="Leave blank to keep existing key"
                             className="pr-10"
                           />
                           <button
@@ -1206,14 +1412,14 @@ export default function AiIntegrationPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel>API Secret (Leave empty to keep current)</FieldLabel>
+                      <FieldLabel>API Secret (Optional)</FieldLabel>
                       <FieldContent>
                         <div className="relative">
                           <Input
                             type={showApiKey ? "text" : "password"}
                             value={formData.api_secret}
                             onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
-                            placeholder="Enter new API secret or leave empty"
+                            placeholder="Leave blank to keep existing secret"
                             className="pr-10"
                           />
                           <button
@@ -1239,6 +1445,11 @@ export default function AiIntegrationPage() {
                             placeholder={getProviderFields(selectedProvider.slug).endpoint_url.placeholder}
                             required={getProviderFields(selectedProvider.slug).endpoint_url.required}
                           />
+                          {selectedProvider.slug === 'azure_openai' && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Format: https://your-resource.openai.azure.com
+                            </p>
+                          )}
                         </FieldContent>
                       </Field>
                     )}
@@ -1246,7 +1457,7 @@ export default function AiIntegrationPage() {
                     {selectedProvider && getProviderFields(selectedProvider.slug).organization_id.show && (
                       <div className="grid grid-cols-2 gap-4">
                         <Field>
-                          <FieldLabel>Organization ID</FieldLabel>
+                          <FieldLabel>Organization ID (Optional)</FieldLabel>
                           <FieldContent>
                             <Input
                               value={formData.organization_id}
@@ -1258,7 +1469,7 @@ export default function AiIntegrationPage() {
 
                         {getProviderFields(selectedProvider.slug).project_id.show && (
                           <Field>
-                            <FieldLabel>Project ID</FieldLabel>
+                            <FieldLabel>Project ID (Optional)</FieldLabel>
                             <FieldContent>
                               <Input
                                 value={formData.project_id}
@@ -1281,6 +1492,9 @@ export default function AiIntegrationPage() {
                             onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
                             min="0"
                           />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Higher priority keys are preferred
+                          </p>
                         </FieldContent>
                       </Field>
 
@@ -1311,6 +1525,7 @@ export default function AiIntegrationPage() {
                             type="number"
                             value={formData.rate_limit_per_minute}
                             onChange={(e) => setFormData({ ...formData, rate_limit_per_minute: e.target.value })}
+                            placeholder="e.g., 60"
                             min="1"
                           />
                         </FieldContent>
@@ -1323,21 +1538,84 @@ export default function AiIntegrationPage() {
                             type="number"
                             value={formData.rate_limit_per_day}
                             onChange={(e) => setFormData({ ...formData, rate_limit_per_day: e.target.value })}
+                            placeholder="e.g., 10000"
                             min="1"
                           />
                         </FieldContent>
                       </Field>
                     </div>
+
+                    {/* Scopes Section */}
+                    {availableScopes.length > 0 && (
+                      <Field>
+                        <FieldLabel>
+                          Allowed Scopes
+                          <span className="font-normal text-muted-foreground ml-2">(Optional)</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Select which AI tasks this API key can be used for. Leave empty to allow all tasks.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-muted/50 rounded-lg">
+                            {availableScopes.map((scope) => (
+                              <label
+                                key={scope.slug}
+                                className="flex items-start gap-3 p-2 rounded-md hover:bg-background/50 cursor-pointer transition-colors"
+                              >
+                                <Checkbox
+                                  checked={formData.scopes.includes(scope.slug)}
+                                  onCheckedChange={() => toggleScope(scope.slug)}
+                                  className="mt-0.5"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm">{scope.name}</div>
+                                  <div className="text-xs text-muted-foreground line-clamp-2">
+                                    {scope.description}
+                                  </div>
+                                  {scope.module && (
+                                    <Badge variant="outline" className="mt-1 text-xs">
+                                      {scope.module}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                          {formData.scopes.length > 0 && (
+                            <div className="mt-2 text-sm text-muted-foreground">
+                              Selected: {formData.scopes.length} scope{formData.scopes.length !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </FieldContent>
+                      </Field>
+                    )}
                   </div>
-                  <DialogFooter className="mt-6">
-                    <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
-                      Cancel
+                  <AlertDialogFooter className="mt-6 flex justify-between gap-2 sm:justify-between">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => selectedApiKey && handleTestApiKey(selectedApiKey.id)}
+                      disabled={testingApiKeyId === selectedApiKey?.id}
+                    >
+                      {testingApiKeyId === selectedApiKey?.id ? (
+                        <>Testing...</>
+                      ) : (
+                        <>
+                          <HugeiconsIcon icon={PlayIcon} className="size-4 mr-2" />
+                          Test API Key
+                        </>
+                      )}
                     </Button>
-                    <Button type="submit">Update API Key</Button>
-                  </DialogFooter>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">Update API Key</Button>
+                    </div>
+                  </AlertDialogFooter>
                 </form>
-              </DialogContent>
-            </Dialog>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -79,6 +79,7 @@ export { aiIntegrationService } from './services/ai-integration.service'
 export type {
   AiProvider,
   AiApiKey,
+  AiApiKeyScope,
   AiUsageLog,
   AiUsageStatistics,
   AiPromptTemplate,
@@ -90,7 +91,15 @@ export type {
   ApiKeyListParams,
   PromptTemplateListParams,
   RenderPromptRequest,
+  TestApiKeyResult,
 } from './services/ai-integration.service'
+
+export { aiChatService } from './services/ai-chat.service'
+export type {
+  AiChatMessage,
+  AiChatResponse,
+  AiChatConnectionStatus,
+} from './services/ai-chat.service'
 
 export { paymentGatewayService } from './services/payment-gateway.service'
 export type {

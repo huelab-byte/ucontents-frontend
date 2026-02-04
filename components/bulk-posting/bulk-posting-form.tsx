@@ -200,7 +200,7 @@ export function BulkPostingForm({
       {/* Content Source Section */}
       <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
         <div className="text-xs font-medium mb-3">Content Source</div>
-        
+
         {/* Content Source Type Selection */}
         <Field orientation="vertical">
           <FieldLabel>
@@ -247,7 +247,7 @@ export function BulkPostingForm({
                 className="hidden"
                 id="csv-file-upload"
               />
-              
+
               {!csvFile ? (
                 <div
                   className={cn(
@@ -328,37 +328,43 @@ export function BulkPostingForm({
                     const folder = folderItems.find((f) => (typeof f === 'object' && f && 'id' in f ? String((f as { id: number; name: string }).id) : f) === source)
                     const label = typeof folder === 'object' && folder && 'name' in folder ? (folder as { id: number; name: string }).name : source
                     return (
-                    <div
-                      key={source}
-                      className="bg-muted text-foreground flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-xs font-medium whitespace-nowrap"
-                    >
-                      <span>{label}</span>
-                      <button
-                        type="button"
-                        onClick={() => onContentSourceChange(contentSource.filter((s) => s !== source))}
-                        className="ml-1 opacity-50 hover:opacity-100 rounded-sm hover:bg-muted-foreground/20 p-0.5"
-                        aria-label={`Remove ${label}`}
+                      <div
+                        key={source}
+                        className="bg-muted text-foreground flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-xs font-medium whitespace-nowrap"
                       >
-                        <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-3" />
-                      </button>
-                    </div>
-                  )})}
+                        <span>{label}</span>
+                        <button
+                          type="button"
+                          onClick={() => onContentSourceChange(contentSource.filter((s) => s !== source))}
+                          className="ml-1 opacity-50 hover:opacity-100 rounded-sm hover:bg-muted-foreground/20 p-0.5"
+                          aria-label={`Remove ${label}`}
+                        >
+                          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
                   <ComboboxChipsInput
                     placeholder={contentSource.length === 0 ? "Search and select folders" : "Add more folders..."}
                   />
                 </ComboboxChips>
                 <ComboboxContent anchor={anchorRef}>
-                  <ComboboxEmpty>No folders found.</ComboboxEmpty>
                   <ComboboxList>
-                    {folderItems.map((item) => {
-                      const id = typeof item === 'object' && item && 'id' in item ? String((item as { id: number; name: string }).id) : String(item)
-                      const name = typeof item === 'object' && item && 'name' in item ? (item as { id: number; name: string }).name : String(item)
-                      return (
-                        <ComboboxItem key={id} value={id}>
-                          {name}
-                        </ComboboxItem>
-                      )
-                    })}
+                    {folderItems.length === 0 ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        No folders available.
+                      </div>
+                    ) : (
+                      folderItems.map((item) => {
+                        const id = typeof item === 'object' && item && 'id' in item ? String((item as { id: number; name: string }).id) : String(item)
+                        const name = typeof item === 'object' && item && 'name' in item ? (item as { id: number; name: string }).name : String(item)
+                        return (
+                          <ComboboxItem key={id} value={id}>
+                            {name}
+                          </ComboboxItem>
+                        )
+                      })
+                    )}
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>

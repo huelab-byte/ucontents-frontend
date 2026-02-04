@@ -38,6 +38,7 @@ export interface BulkPostingItem {
   repostCondition?: ScheduleCondition
   repostInterval?: number
   repostMaxCount?: number
+  lastPostAt?: string
 }
 
 export interface NetworkResult {

@@ -119,7 +119,7 @@ export const bulkPostingService = {
   },
 
   async downloadSampleCsv(): Promise<void> {
-    await downloadFile('/v1/customer/bulk-posting/sample-csv', 'bulk-posting-sample.csv')
+    await downloadFile(`/v1/customer/bulk-posting/sample-csv?t=${Date.now()}`, 'bulk-posting-sample.csv')
   },
 }
 

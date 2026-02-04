@@ -16,6 +16,7 @@ import {
   Queue01Icon,
   Video01Icon,
   RefreshIcon,
+  Timer01Icon,
 } from "@hugeicons/core-free-icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -36,7 +37,7 @@ function generateScheduledContent(): ScheduledContent[] {
   const platforms: Array<"facebook" | "instagram" | "tiktok" | "youtube"> = ["facebook", "instagram", "tiktok", "youtube"]
   const types: Array<"image" | "video" | "text"> = ["image", "video", "text"]
   const statuses: Array<"scheduled" | "published" | "error"> = ["scheduled", "published", "error"]
-  
+
   const contentTitles = [
     "Summer Collection Launch",
     "Product Showcase Video",
@@ -86,11 +87,11 @@ function generateScheduledContent(): ScheduledContent[] {
     const ampm = hour >= 12 ? "PM" : "AM"
     const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
     const time = `${displayHour}:${timeStr.split(":")[1]} ${ampm}`
-    
+
     const hashtags = ["#startnow", "#noregrets", "#takeaction", "#motivation", "#success", "#inspiration"]
     const selectedHashtags = hashtags.slice(0, Math.floor(Math.random() * 3) + 2).join(" ")
     const contentText = `${title} ${selectedHashtags}`
-    
+
     const numPlatforms = Math.random() > 0.5 ? 1 : Math.floor(Math.random() * 3) + 1
     const selectedPlatforms = platforms
       .sort(() => Math.random() - 0.5)
@@ -99,7 +100,7 @@ function generateScheduledContent(): ScheduledContent[] {
     // Create publishedAt ISO datetime string
     const publishedAt = new Date(date)
     publishedAt.setHours(hour, minute, 0, 0)
-    
+
     content.push({
       id: `content-${i + 21}`,
       publishedAt: publishedAt.toISOString(),
@@ -111,7 +112,7 @@ function generateScheduledContent(): ScheduledContent[] {
       contentText: contentText,
     })
   }
-  
+
   // Sort by date descending (most recent first: today -> future -> past)
   return content.sort((a, b) => {
     const dateA = new Date(a.publishedAt).getTime()
@@ -119,18 +120,18 @@ function generateScheduledContent(): ScheduledContent[] {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const todayTime = today.getTime()
-    
+
     const aIsToday = dateA === todayTime
     const bIsToday = dateB === todayTime
     if (aIsToday && !bIsToday) return -1
     if (!aIsToday && bIsToday) return 1
-    
+
     if (dateA > todayTime && dateB > todayTime) {
       return dateA - dateB
     }
     if (dateA > todayTime) return -1
     if (dateB > todayTime) return 1
-    
+
     return dateB - dateA
   })
 }
@@ -229,6 +230,74 @@ export default function BulkPostingDetailsPage() {
     }
   }
 
+  const [timeLeft, setTimeLeft] = React.useState<string>("-")
+
+  React.useEffect(() => {
+    if (!campaign || campaign.status !== "running") {
+      setTimeLeft(campaign?.status === "paused" ? "Paused" : "-")
+      return
+    }
+
+    const calculateTimeLeft = () => {
+      const baseDate = campaign.lastPostAt
+        ? new Date(campaign.lastPostAt)
+        : new Date(campaign.startedDate)
+
+      // If date is invalid
+      if (isNaN(baseDate.getTime())) return "-"
+
+      const interval = campaign.scheduleInterval || 1
+      const condition = campaign.scheduleCondition || "minute"
+
+      const nextDate = new Date(baseDate)
+
+      switch (condition) {
+        case "minute":
+          nextDate.setMinutes(nextDate.getMinutes() + interval)
+          break
+        case "hourly":
+          nextDate.setHours(nextDate.getHours() + interval)
+          break
+        case "daily":
+          nextDate.setDate(nextDate.getDate() + interval)
+          break
+        case "weekly":
+          nextDate.setDate(nextDate.getDate() + (interval * 7))
+          break
+        case "monthly":
+          nextDate.setMonth(nextDate.getMonth() + interval)
+          break
+      }
+
+      const now = new Date()
+      const diff = nextDate.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        return "Processing..."
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`
+      }
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    }
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft())
+
+    // Update every second
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [campaign])
+
   if (isLoading) {
     return (
       <CustomerDashboardLayout>
@@ -264,8 +333,8 @@ export default function BulkPostingDetailsPage() {
     )
   }
 
-  const progressPercentage = campaign.totalPost > 0 
-    ? Math.round((campaign.postedAmount / campaign.totalPost) * 100) 
+  const progressPercentage = campaign.totalPost > 0
+    ? Math.round((campaign.postedAmount / campaign.totalPost) * 100)
     : 0
 
   return (
@@ -311,9 +380,9 @@ export default function BulkPostingDetailsPage() {
                 onClick={handleSync}
                 disabled={isSyncing}
               >
-                <HugeiconsIcon 
-                  icon={RefreshIcon} 
-                  className={cn("size-4 mr-2", isSyncing && "animate-spin")} 
+                <HugeiconsIcon
+                  icon={RefreshIcon}
+                  className={cn("size-4 mr-2", isSyncing && "animate-spin")}
                 />
                 {isSyncing ? "Syncing..." : "Sync Folder"}
               </Button>
@@ -367,7 +436,7 @@ export default function BulkPostingDetailsPage() {
         </div>
 
         {/* Campaign Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="text-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
@@ -401,6 +470,18 @@ export default function BulkPostingDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{campaign.remainingContent}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="text-xs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                <HugeiconsIcon icon={Timer01Icon} className="size-4" />
+                Next Post
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold font-mono tracking-tight">{timeLeft}</div>
             </CardContent>
           </Card>
 

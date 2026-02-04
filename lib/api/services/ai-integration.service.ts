@@ -5,12 +5,23 @@ export interface AiProvider {
   slug: string
   name: string
   supported_models: string[]
+  vision_models?: string[]
+  embedding_models?: string[]
   base_url: string | null
   is_active: boolean
   has_active_keys: boolean
   active_keys_count: number
   created_at: string
   updated_at: string
+}
+
+export interface AiApiKeyScope {
+  slug: string
+  name: string
+  description: string
+  module: string | null
+  requires_vision: boolean
+  requires_embedding_model?: boolean
 }
 
 export interface AiApiKey {
@@ -26,11 +37,21 @@ export interface AiApiKey {
   priority: number
   rate_limit_per_minute: number | null
   rate_limit_per_day: number | null
+  scopes: string[]
+  scope_names: string[]
   last_used_at: string | null
   total_requests: number
   total_tokens: number
   created_at: string
   updated_at: string
+}
+
+export interface TestApiKeyResult {
+  success: boolean
+  message: string
+  response_time_ms?: number
+  model?: string
+  error?: string
 }
 
 export interface AiUsageLog {
@@ -106,6 +127,7 @@ export interface CreateAiApiKeyRequest {
   rate_limit_per_minute?: number
   rate_limit_per_day?: number
   metadata?: AiApiKeyMetadata
+  scopes?: string[]
 }
 
 export interface UpdateAiApiKeyRequest {
@@ -120,6 +142,7 @@ export interface UpdateAiApiKeyRequest {
   rate_limit_per_minute?: number
   rate_limit_per_day?: number
   metadata?: AiApiKeyMetadata
+  scopes?: string[]
 }
 
 export interface UsageLogListParams {
@@ -238,6 +261,14 @@ export const aiIntegrationService = {
 
   async disableApiKey(id: number): Promise<ApiResponse<AiApiKey>> {
     return apiClient.post(`/v1/admin/ai-api-keys/${id}/disable`, undefined, { skipToast: true })
+  },
+
+  async getAvailableScopes(): Promise<ApiResponse<AiApiKeyScope[]>> {
+    return apiClient.get('/v1/admin/ai-api-keys/scopes')
+  },
+
+  async testApiKey(id: number): Promise<ApiResponse<TestApiKeyResult>> {
+    return apiClient.post(`/v1/admin/ai-api-keys/${id}/test`, undefined, { skipToast: true })
   },
 
   // Usage & Statistics
