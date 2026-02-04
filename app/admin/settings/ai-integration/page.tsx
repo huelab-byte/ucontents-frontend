@@ -35,6 +35,8 @@ import {
   EyeIcon,
   SettingsIcon,
   PlayIcon,
+  RefreshIcon,
+  CloudIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import {
@@ -851,10 +853,16 @@ export default function AiIntegrationPage() {
                     <CardTitle>API Keys</CardTitle>
                     <CardDescription>Manage AI provider API keys</CardDescription>
                   </div>
-                  <Button onClick={openCreateDialog}>
-                    <HugeiconsIcon icon={PlusSignIcon} className="size-4 mr-2" />
-                    Add API Key
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={initializeProviders} disabled={providersInitializing}>
+                      <HugeiconsIcon icon={RefreshIcon} className={cn("size-4 mr-2", providersInitializing && "animate-spin")} />
+                      Sync Providers
+                    </Button>
+                    <Button onClick={openCreateDialog}>
+                      <HugeiconsIcon icon={PlusSignIcon} className="size-4 mr-2" />
+                      Add API Key
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1073,7 +1081,13 @@ export default function AiIntegrationPage() {
                             <SelectContent>
                               {providers.map((provider) => (
                                 <SelectItem key={provider.id} value={provider.id.toString()}>
-                                  {provider.name}
+                                  <div className="flex items-center gap-2">
+                                    {provider.slug === 'openai' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                    {provider.slug === 'anthropic' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                    {provider.slug === 'google' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                    {provider.slug === 'ucontents' && <HugeiconsIcon icon={CloudIcon} className="size-4 text-emerald-500" />}
+                                    {provider.name}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1368,6 +1382,7 @@ export default function AiIntegrationPage() {
                                   {provider.slug === 'openai' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
                                   {provider.slug === 'anthropic' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
                                   {provider.slug === 'google' && <HugeiconsIcon icon={MachineRobotIcon} className="size-4" />}
+                                  {provider.slug === 'ucontents' && <HugeiconsIcon icon={CloudIcon} className="size-4 text-emerald-500" />}
                                   {provider.name}
                                 </div>
                               </SelectItem>
