@@ -34,7 +34,12 @@ interface ContentMetadataTableProps {
   onDelete: (id: string) => void
   onBatchDelete: () => void
   onWatchVideo: (url: string) => void
-  itemsPerPage?: number
+  itemsPerPage?: number,
+  currentPage?: number
+  totalPages?: number
+  totalItems?: number
+  onPageChange?: (page: number) => void
+  isLoading?: boolean
 }
 
 export function ContentMetadataTable({
@@ -47,25 +52,40 @@ export function ContentMetadataTable({
   onDelete,
   onBatchDelete,
   onWatchVideo,
-  itemsPerPage = 10,
+  itemsPerPage = 15, // Default to match backend
+  currentPage: propCurrentPage,
+  totalPages: propTotalPages,
+  totalItems,
+  onPageChange,
+  isLoading = false
 }: ContentMetadataTableProps) {
-  const [currentPage, setCurrentPage] = React.useState(1)
-  const totalPages = Math.ceil(contentMetadata.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentMetadata = contentMetadata.slice(startIndex, endIndex)
+  // Use internal state only if external pagination is not provided
+  const [internalCurrentPage, setInternalCurrentPage] = React.useState(1)
+
+  const isServerSide = !!onPageChange
+
+  const currentPage = isServerSide ? (propCurrentPage || 1) : internalCurrentPage
+  const totalPages = isServerSide ? (propTotalPages || 1) : Math.ceil(contentMetadata.length / itemsPerPage)
+
+  // For client-side: slice array. For server-side: use as is (since backend returns active page only)
+  const currentMetadata = isServerSide ? contentMetadata : contentMetadata.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page)
+      if (isServerSide && onPageChange) {
+        onPageChange(page)
+      } else {
+        setInternalCurrentPage(page)
+      }
     }
   }
 
+  // Reset to page 1 if data changes significantly (client-side only behavior mostly)
   React.useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1)
+    if (!isServerSide && currentPage > totalPages && totalPages > 0) {
+      setInternalCurrentPage(1)
     }
-  }, [totalPages, currentPage])
+  }, [totalPages, currentPage, isServerSide])
 
   const allSelected = currentMetadata.length > 0 && currentMetadata.every((item) => selectedMetadataIds.has(item.id))
 
@@ -141,7 +161,7 @@ export function ContentMetadataTable({
             <tbody>
               {currentMetadata.map((item, index) => (
                 <tr
-                  key={`${item.id}-${startIndex + index}`}
+                  key={`${item.id}-${index}`}
                   className={cn(
                     "border-b border-border hover:bg-muted/50 transition-colors",
                     selectedMetadataIds.has(item.id) && "bg-muted/30"
@@ -239,9 +259,12 @@ export function ContentMetadataTable({
         {totalPages > 1 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 py-2 border-t border-border mt-2">
             <div className="text-xs text-muted-foreground whitespace-nowrap">
-              Showing {(startIndex + 1).toLocaleString()} to{" "}
-              {Math.min(endIndex, contentMetadata.length).toLocaleString()} of{" "}
-              {contentMetadata.length.toLocaleString()} entries
+              Showing {(isServerSide ? (currentPage - 1) * itemsPerPage : (currentPage - 1) * itemsPerPage) + 1} to{" "}
+              {isServerSide
+                ? Math.min(currentPage * itemsPerPage, totalItems || (currentPage * itemsPerPage))
+                : Math.min(currentPage * itemsPerPage, contentMetadata.length)
+              } of{" "}
+              {isServerSide ? (totalItems || 0) : contentMetadata.length} entries
             </div>
             <div className="flex items-center gap-1 flex-wrap justify-center">
               <Button

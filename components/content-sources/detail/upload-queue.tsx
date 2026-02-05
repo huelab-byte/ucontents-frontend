@@ -33,6 +33,7 @@ interface UploadQueueProps {
   onClearQueue: () => void
   onDeleteCompleted: (fileId: string) => void
   onStartUpload?: () => void
+  isUploading?: boolean
 }
 
 export function UploadQueue({
@@ -45,6 +46,7 @@ export function UploadQueue({
   onClearQueue,
   onDeleteCompleted,
   onStartUpload,
+  isUploading = false,
 }: UploadQueueProps) {
   const totalQueued = uploadQueue.length
   const totalProcessing = processingQueue.length
@@ -66,6 +68,7 @@ export function UploadQueue({
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={isUploading}
                     onClick={(e) => {
                       e.stopPropagation()
                       onClearQueue()
@@ -90,8 +93,22 @@ export function UploadQueue({
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium">Queued ({totalQueued})</h4>
                   {onStartUpload && (
-                    <Button size="sm" onClick={onStartUpload}>
-                      Start Upload
+                    <Button
+                      size="sm"
+                      onClick={onStartUpload}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Uploading...
+                        </>
+                      ) : (
+                        "Start Upload"
+                      )}
                     </Button>
                   )}
                 </div>
@@ -108,6 +125,9 @@ export function UploadQueue({
                           <p className="text-xs text-muted-foreground">
                             {(file.fileSize / 1024 / 1024).toFixed(2)} MB
                           </p>
+                          {file.uploadProgress !== undefined && file.uploadProgress > 0 && (
+                            <Progress value={file.uploadProgress} className="h-1 mt-1" />
+                          )}
                         </div>
                       </div>
                       <Button

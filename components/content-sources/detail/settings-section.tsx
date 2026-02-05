@@ -122,55 +122,74 @@ export function SettingsSection({
                 </FieldContent>
               </Field>
 
-              {/* Prompt Template Selector - shown only when "Content generation prompt" is selected */}
-              {promptSettings.contentSourceType === "prompt" && (
-                <Field>
-                  <FieldLabel>
-                    <Label className="text-xs">Select Prompt Template</Label>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Select
-                      value={promptSettings.templateId || ""}
-                      onValueChange={(value) =>
-                        onPromptSettingsChange({
-                          ...promptSettings,
-                          templateId: value || null,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a prompt template" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {promptTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="custom">Custom</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    {promptSettings.templateId === "custom" && (
-                      <div className="mt-3">
-                        <Label className="text-xs mb-2 block">Custom Prompt</Label>
-                        <Textarea
-                          value={promptSettings.customPrompt}
-                          onChange={(e) =>
+              {/* CUSTOM PROMPT SECTION */}
+              {(promptSettings.contentSourceType === "prompt" ||
+                promptSettings.contentSourceType === "frame_extract" ||
+                promptSettings.contentSourceType === "video_title") && (
+                  <Field>
+                    <FieldLabel>
+                      <Label className="text-xs">
+                        {promptSettings.contentSourceType === "prompt"
+                          ? "Prompt Template"
+                          : "Custom Generation Prompt (Optional)"}
+                      </Label>
+                    </FieldLabel>
+                    <FieldContent>
+                      {promptSettings.contentSourceType === "prompt" && (
+                        <Select
+                          value={promptSettings.templateId || ""}
+                          onValueChange={(value) =>
                             onPromptSettingsChange({
                               ...promptSettings,
-                              customPrompt: e.target.value,
+                              templateId: value || null,
                             })
                           }
-                          placeholder="Enter your custom prompt here..."
-                          className="min-h-[100px] text-sm"
-                        />
-                      </div>
-                    )}
-                  </FieldContent>
-                </Field>
-              )}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a prompt template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {promptTemplates.map((template) => (
+                                <SelectItem key={template.id} value={template.id}>
+                                  {template.name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {(promptSettings.contentSourceType === "frame_extract" ||
+                        promptSettings.contentSourceType === "video_title" ||
+                        promptSettings.templateId === "custom") && (
+                          <div className={cn(promptSettings.contentSourceType === "prompt" && "mt-3")}>
+                            {promptSettings.contentSourceType === "prompt" && (
+                              <Label className="text-xs mb-2 block">Custom Prompt</Label>
+                            )}
+                            <Textarea
+                              value={promptSettings.customPrompt}
+                              onChange={(e) =>
+                                onPromptSettingsChange({
+                                  ...promptSettings,
+                                  customPrompt: e.target.value,
+                                })
+                              }
+                              placeholder={
+                                promptSettings.contentSourceType === "frame_extract"
+                                  ? "Optional: Help the AI focus on specific details (e.g. 'Focus on the person's gear')."
+                                  : promptSettings.contentSourceType === "video_title"
+                                    ? "Optional: Additional instructions for title expansion (e.g. 'Make it funny', 'Focus on the educational aspect')."
+                                    : "Enter your custom prompt here..."
+                              }
+                              className="min-h-[80px] text-sm"
+                            />
+                          </div>
+                        )}
+                    </FieldContent>
+                  </Field>
+                )}
 
               {/* Content generation parameters - same row layout as Caption word count, Video Loop */}
               <Separator />

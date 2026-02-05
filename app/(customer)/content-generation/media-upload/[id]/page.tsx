@@ -170,11 +170,19 @@ export default function MediaUploadFolderDetailsPage() {
   const [captionTemplates, setCaptionTemplates] = React.useState<ApiCaptionTemplate[]>([])
   const [promptTemplates, setPromptTemplates] = React.useState<{ id: string; name: string; prompt: string }[]>([])
   const [contentMetadata, setContentMetadata] = React.useState<ContentMetadata[]>([])
+  const [pagination, setPagination] = React.useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 15,
+    total: 0
+  })
   const [isLoading, setIsLoading] = React.useState(true)
+  const [isMetadataLoading, setIsMetadataLoading] = React.useState(true)
   const [uploadQueue, setUploadQueue] = React.useState<VideoFile[]>([])
   const [processingQueue, setProcessingQueue] = React.useState<VideoFile[]>([])
   const [completedFiles, setCompletedFiles] = React.useState<VideoFile[]>([])
   const [queueItemMap, setQueueItemMap] = React.useState<Map<string, number>>(new Map())
+  const [isUploading, setIsUploading] = React.useState(false)
   const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [captionSettings, setCaptionSettings] = React.useState<CaptionSettings>({
@@ -236,12 +244,14 @@ export default function MediaUploadFolderDetailsPage() {
     }
     setIsLoading(true)
     try {
-      const [folderRes, settingsRes, captionsRes, uploadsRes, promptsRes] = await Promise.all([
+      const [folderRes, settingsRes, captionsRes, uploadsRes, promptsRes, queueRes] = await Promise.all([
         mediaUploadService.getFolder(folderId),
         mediaUploadService.getContentSettings(folderId),
         mediaUploadService.listCaptionTemplates(),
-        mediaUploadService.listUploads({ folder_id: folderId }),
+        // Initial load page 1 defaults
+        mediaUploadService.listUploads({ folder_id: folderId, page: 1, per_page: 15 }),
         aiIntegrationService.getCustomerPromptTemplates().catch(() => ({ success: false, data: [] })),
+        mediaUploadService.listQueue({ folder_id: folderId, status: "pending,processing" }),
       ])
       if (folderRes.success && folderRes.data) setFolder(folderRes.data)
       if (settingsRes.success) {
@@ -281,13 +291,44 @@ export default function MediaUploadFolderDetailsPage() {
       }
       if (uploadsRes.success && uploadsRes.data) {
         const data = Array.isArray(uploadsRes.data) ? uploadsRes.data : (uploadsRes.data as { data?: MediaUpload[] })?.data ?? []
-        const mapped = data.map(mapMediaUploadToMetadata)
-        const seen = new Set<string>()
-        setContentMetadata(mapped.filter((item) => {
-          if (seen.has(item.id)) return false
-          seen.add(item.id)
-          return true
-        }))
+        // Handle paginated response structure if present
+        if (uploadsRes.pagination) {
+          setPagination({
+            current_page: uploadsRes.pagination.current_page,
+            last_page: uploadsRes.pagination.last_page,
+            per_page: uploadsRes.pagination.per_page,
+            total: uploadsRes.pagination.total
+          })
+        }
+        setContentMetadata(data.map(mapMediaUploadToMetadata))
+      }
+      setIsMetadataLoading(false)
+      if (queueRes && queueRes.success && Array.isArray(queueRes.data)) {
+        const items = queueRes.data as MediaUploadQueueStatus[]
+        if (items.length > 0) {
+          const restoredMap = new Map<string, number>()
+          const restoredQueue: VideoFile[] = items.map(item => {
+            const vidId = `restored-${item.id}`
+            restoredMap.set(vidId, item.id)
+            return {
+              id: vidId,
+              filename: item.file_name,
+              fileSize: 0, // Unknown
+              status: "UPLOADING" as const,
+              uploadProgress: item.progress ?? 0
+            }
+          })
+          setQueueItemMap(restoredMap)
+          setProcessingQueue(restoredQueue)
+          // If they are restored, we assume they are already in "step 2" logic, 
+          // but we might need to ensure poll starts. Poll starts if queueItemMap > 0.
+          // But we typically want to show the upload section if there are active items.
+          // Or maybe just show the queue.
+          if (restoredQueue.length > 0) {
+            // Optionally force step 2 if you want user to see it immediately
+            // setCurrentStep(2) 
+          }
+        }
       }
       if (promptsRes.success && promptsRes.data) {
         setPromptTemplates(
@@ -298,6 +339,9 @@ export default function MediaUploadFolderDetailsPage() {
           }))
         )
       }
+
+
+
     } catch (err) {
       console.error("Load failed:", err)
       toast.error("Failed to load folder")
@@ -310,6 +354,30 @@ export default function MediaUploadFolderDetailsPage() {
   React.useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handlePageChange = React.useCallback(async (page: number) => {
+    if (Number.isNaN(folderId)) return
+    setIsMetadataLoading(true)
+    try {
+      const res = await mediaUploadService.listUploads({ folder_id: folderId, page, per_page: pagination.per_page })
+      if (res.success && res.data) {
+        const data = Array.isArray(res.data) ? res.data : (res.data as { data?: MediaUpload[] })?.data ?? []
+        if (res.pagination) {
+          setPagination({
+            current_page: res.pagination.current_page,
+            last_page: res.pagination.last_page,
+            per_page: res.pagination.per_page,
+            total: res.pagination.total
+          })
+        }
+        setContentMetadata(data.map(mapMediaUploadToMetadata))
+      }
+    } catch (err) {
+      toast.error("Failed to load page")
+    } finally {
+      setIsMetadataLoading(false)
+    }
+  }, [folderId, pagination.per_page])
 
   const saveContentSettings = React.useCallback(
     async (updates: Partial<PromptSettings>) => {
@@ -367,7 +435,24 @@ export default function MediaUploadFolderDetailsPage() {
                 next.delete(fileKey)
                 return next
               })
+              // Remove from Processing Queue only if we want to auto-hide.
+              // User request: "We must clear the video from ui upload queue once the video processing finished"
+              // But also "Don't clear the video when the upload done."
+              // The bug before was that it wasn't appearing in processing queue at all.
+              // Now it moves to processing queue. When completed, we remove it.
+              // This is correct per "clear ... once ... processing finished".
               setProcessingQueue((prev) => prev.filter((f) => f.id !== fileKey))
+
+              // We can add it to completedFiles to be explicit?
+              setCompletedFiles((prev) => {
+                const file = processingQueue.find(f => f.id === fileKey) ||
+                  uploadQueue.find(f => f.id === fileKey);
+                // We need to reconstruct the file object if we can't find it in queues,
+                // but we can't easily.
+                // However, we can use the metadata we fetch.
+                return prev;
+              });
+
               mediaUploadService
                 .getUpload(q.media_upload_id)
                 .then((r) => {
@@ -376,12 +461,27 @@ export default function MediaUploadFolderDetailsPage() {
                     setContentMetadata((prev) =>
                       prev.some((item) => item.id === mapped.id) ? prev : [mapped, ...prev]
                     )
+
+                    // Add to completed files list for the UI feedback
+                    setCompletedFiles(prev => {
+                      // Check if already exists
+                      if (prev.some(f => f.id === fileKey)) return prev;
+                      // Create a VideoFile representation
+                      return [{
+                        id: fileKey,
+                        filename: r.data!.title || "Video",
+                        fileSize: r.data!.storage_file?.size || 0,
+                        status: "COMPLETED",
+                        url: ""
+                      }, ...prev]
+                    })
+
                     setFolder((prev) =>
                       prev ? { ...prev, media_uploads_count: (prev.media_uploads_count ?? 0) + 1 } : null
                     )
                   }
                 })
-                .catch(() => {})
+                .catch(() => { })
             } else if (q.status === "failed") {
               setProcessingQueue((prev) =>
                 prev.map((f) =>
@@ -431,18 +531,9 @@ export default function MediaUploadFolderDetailsPage() {
   }
 
   const handleStartUpload = async () => {
-    if (uploadQueue.length === 0 || Number.isNaN(folderId)) return
-    const realFiles = await Promise.all(
-      uploadQueue.map(async (f) => {
-        if (!f.url) return null
-        // Local blob URL → File for upload (not an API call; object URL from createObjectURL)
-        const res = await fetch(f.url)
-        const blob = await res.blob()
-        return new File([blob], f.filename, { type: blob.type || "video/mp4" })
-      })
-    )
-    const validFiles = realFiles.filter((x): x is File => x !== null)
-    if (validFiles.length === 0) return
+    if (uploadQueue.length === 0 || Number.isNaN(folderId) || isUploading) return
+    setIsUploading(true)
+
     const captionConfig = {
       enable_video_caption: captionSettings.enableVideoCaption,
       font: captionSettings.font,
@@ -457,28 +548,73 @@ export default function MediaUploadFolderDetailsPage() {
       loop_count: captionSettings.loopCount,
       enable_reverse: captionSettings.enableAlternatingLoop,
     }
+
+    const BATCH_SIZE = 5
+    const queueCopy = [...uploadQueue]
+
     try {
-      const res = await mediaUploadService.bulkUpload(validFiles, folderId, captionConfig)
-      if (res.success && res.data?.queued_items) {
-        const items = res.data.queued_items as MediaUploadQueueStatus[]
-        const map = new Map<string, number>()
-        uploadQueue.forEach((uf, i) => {
-          if (items[i]) map.set(uf.id, items[i].id)
-        })
-        setQueueItemMap(map)
-        setUploadQueue([])
-        setProcessingQueue(
-          uploadQueue.map((f) => ({
-            ...f,
-            status: "UPLOADING" as const,
-            uploadProgress: 0,
-          }))
+      for (let i = 0; i < queueCopy.length; i += BATCH_SIZE) {
+        const batch = queueCopy.slice(i, i + BATCH_SIZE)
+
+        // Prepare files for this batch
+        const realFiles = await Promise.all(
+          batch.map(async (f) => {
+            if (!f.url) return null
+            const res = await fetch(f.url)
+            const blob = await res.blob()
+            return new File([blob], f.filename, { type: blob.type || "video/mp4" })
+          })
         )
-        toast.success(`${items.length} video(s) queued for processing`)
+        const validFiles = realFiles.filter((x): x is File => x !== null)
+        if (validFiles.length === 0) continue
+
+        await mediaUploadService.bulkUpload(validFiles, folderId, captionConfig, (progressEvent) => {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          setUploadQueue((prev) =>
+            prev.map((f) => {
+              if (batch.some((bf) => bf.id === f.id)) {
+                return { ...f, uploadProgress: percent }
+              }
+              return f
+            })
+          )
+        }).then((res) => {
+          if (res.success && res.data?.queued_items) {
+            const items = res.data.queued_items as MediaUploadQueueStatus[]
+
+            // Prepare synchronous updates
+            const newMapEntries = new Map<string, number>()
+            const processedFiles: VideoFile[] = []
+
+            batch.forEach((f, idx) => {
+              if (items[idx]) {
+                newMapEntries.set(f.id, items[idx].id)
+                processedFiles.push({
+                  ...f,
+                  status: "UPLOADING" as const, // The poller will pick this up and verify status
+                  uploadProgress: 0 // Reset progress bar for processing stage
+                })
+              }
+            })
+
+            setQueueItemMap((prevMap) => {
+              const nextMap = new Map(prevMap)
+              newMapEntries.forEach((v, k) => nextMap.set(k, v))
+              return nextMap
+            })
+
+            // Update queues
+            setUploadQueue((prev) => prev.filter((f) => !batch.some((bf) => bf.id === f.id)))
+            setProcessingQueue((prev) => [...prev, ...processedFiles])
+          }
+        })
       }
+      toast.success("Upload queue processing started")
     } catch (err) {
       console.error("Upload failed:", err)
-      toast.error("Upload failed")
+      toast.error("Some uploads failed")
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -535,10 +671,10 @@ export default function MediaUploadFolderDetailsPage() {
         social_caption: updates.postCaption ?? undefined,
         hashtags: updates.hashtags
           ? updates.hashtags
-              .trim()
-              .split(/\s+/)
-              .filter(Boolean)
-              .map((t) => ensureHashtagPrefix(t))
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((t) => ensureHashtagPrefix(t))
           : undefined,
       })
       setContentMetadata((prev) =>
@@ -651,7 +787,14 @@ export default function MediaUploadFolderDetailsPage() {
             onEdit={handleEditMetadata}
             onDelete={handleDeleteMetadata}
             onBatchDelete={handleBatchDeleteMetadata}
+
             onWatchVideo={(url) => setSelectedVideoUrl(url)}
+            // Server-side pagination props
+            currentPage={pagination.current_page}
+            totalPages={pagination.last_page}
+            totalItems={pagination.total}
+            onPageChange={handlePageChange}
+            isLoading={isMetadataLoading}
           />
         </div>
 
@@ -665,9 +808,8 @@ export default function MediaUploadFolderDetailsPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentStep(1)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    currentStep === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentStep === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
                 >
                   <span className={`flex items-center justify-center size-5 rounded-full text-xs ${currentStep === 1 ? "bg-primary-foreground text-primary" : "bg-muted-foreground/30 text-muted-foreground"}`}>
                     1
@@ -676,9 +818,8 @@ export default function MediaUploadFolderDetailsPage() {
                 </button>
                 <button
                   onClick={() => setCurrentStep(2)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    currentStep === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentStep === 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
                 >
                   <span className={`flex items-center justify-center size-5 rounded-full text-xs ${currentStep === 2 ? "bg-primary-foreground text-primary" : "bg-muted-foreground/30 text-muted-foreground"}`}>
                     2
@@ -701,12 +842,12 @@ export default function MediaUploadFolderDetailsPage() {
                     onPreviewClick={() => setIsCaptionPreviewOpen(true)}
                     onSaveAsTemplate={async (name) => {
                       try {
-        await mediaUploadService.createCaptionTemplate({
-          name,
-          font: captionSettings.font,
-          font_size: captionSettings.fontSize,
-          font_weight: captionSettings.fontWeight,
-          font_color: captionSettings.fontColor,
+                        await mediaUploadService.createCaptionTemplate({
+                          name,
+                          font: captionSettings.font,
+                          font_size: captionSettings.fontSize,
+                          font_weight: captionSettings.fontWeight,
+                          font_color: captionSettings.fontColor,
                           outline_color: captionSettings.outlineColor,
                           outline_size: captionSettings.outlineEnabled ? captionSettings.outlineSize : 0,
                           position: captionSettings.position,
@@ -744,7 +885,7 @@ export default function MediaUploadFolderDetailsPage() {
                                     prev ? { ...prev, default_caption_template_id: null } : null
                                   )
                               })
-                              .catch(() => {})
+                              .catch(() => { })
                           }
                         }
                       } catch {
@@ -792,6 +933,7 @@ export default function MediaUploadFolderDetailsPage() {
                     onClearQueue={handleClearQueue}
                     onDeleteCompleted={handleDeleteCompleted}
                     onStartUpload={handleStartUpload}
+                    isUploading={isUploading}
                   />
                   <div className="pt-4">
                     <button

@@ -130,7 +130,7 @@ export interface CreateCaptionTemplateRequest {
   loop_count?: number
 }
 
-export interface UpdateCaptionTemplateRequest extends Partial<CreateCaptionTemplateRequest> {}
+export interface UpdateCaptionTemplateRequest extends Partial<CreateCaptionTemplateRequest> { }
 
 export interface UpdateMediaUploadRequest {
   youtube_heading?: string | null
@@ -223,7 +223,8 @@ export const mediaUploadService = {
       words_per_caption?: number
       loop_count?: number
       enable_reverse?: boolean
-    } | null
+    } | null,
+    onUploadProgress?: (progressEvent: any) => void
   ): Promise<ApiResponse<{ queued_items: UploadQueueStatus[]; count: number }>> {
     const formData = new FormData()
     files.forEach((file) => {
@@ -237,6 +238,7 @@ export const mediaUploadService = {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 300000,
       skipToast: true,
+      onUploadProgress,
     })
   },
 

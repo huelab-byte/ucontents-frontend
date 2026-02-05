@@ -103,6 +103,9 @@ export function UploadQueueModal({
                                 <p className="text-xs text-muted-foreground">
                                   {(file.fileSize / 1024 / 1024).toFixed(2)} MB
                                 </p>
+                                {file.uploadProgress !== undefined && file.uploadProgress > 0 && (
+                                  <Progress value={file.uploadProgress} className="h-1 mt-1" />
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
