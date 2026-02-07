@@ -73,13 +73,13 @@ const customerMenuItems = [
     url: "/dashboard",
     items: [] as { title: string; url: string; icon: any }[],
   },
-  {
-    title: "AI Chat",
-    icon: MachineRobotIcon,
-    url: "/ai-chat",
-    items: [],
-    permission: "use_ai_chat",
-  },
+  //   {
+  //     title: "AI Chat",
+  //     icon: MachineRobotIcon,
+  //     url: "/ai-chat",
+  //     items: [],
+  //     permission: "use_ai_chat",
+  //   },
   {
     title: "Connection",
     icon: Link01Icon,
