@@ -236,7 +236,7 @@ export const mediaUploadService = {
     }
     return apiClient.post('/v1/customer/media-upload/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 1800000, // 30 minutes
+      timeout: 0, // No timeout (infinite)
       skipToast: true,
       onUploadProgress,
     })
