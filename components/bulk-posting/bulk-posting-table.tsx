@@ -19,6 +19,7 @@ import {
   ArrowRight02Icon,
   PauseIcon,
   PlayIcon,
+  PlusSignIcon,
 } from "@hugeicons/core-free-icons"
 import { BrandDisplay } from "./brand-display"
 import { PlatformIcons } from "./platform-icons"
@@ -37,6 +38,8 @@ interface BulkPostingTableProps {
   onEdit: (id: string) => void
   onPause: (id: string) => void
   onDelete: (id: string) => void
+  /** Renders the Create Campaign button inside the table header (Actions column) */
+  onCreateClick?: () => void
 }
 
 export function BulkPostingTable({
@@ -49,6 +52,7 @@ export function BulkPostingTable({
   onEdit,
   onPause,
   onDelete,
+  onCreateClick,
 }: BulkPostingTableProps) {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
@@ -99,6 +103,16 @@ export function BulkPostingTable({
           <p className="text-muted-foreground mb-4">
             Create your first bulk posting campaign to start scheduling multiple social media posts at once.
           </p>
+          {onCreateClick && (
+            <Button
+              size="sm"
+              className="flex items-center gap-2 mx-auto"
+              onClick={onCreateClick}
+            >
+              <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
+              Create Campaign
+            </Button>
+          )}
         </CardContent>
       </Card>
     )
@@ -106,8 +120,18 @@ export function BulkPostingTable({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Bulk Posting Campaigns</CardTitle>
+        {onCreateClick && (
+          <Button
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={onCreateClick}
+          >
+            <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
+            Create Campaign
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">

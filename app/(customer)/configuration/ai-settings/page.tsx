@@ -109,12 +109,18 @@ export default function CustomerAiSettingsPage() {
         api_key: "",
         api_secret: "",
         endpoint_url: "",
+        deployment_name: "",
         organization_id: "",
         project_id: "",
         is_active: true,
         priority: 0,
         scopes: [] as string[],
     })
+
+    const selectedProvider = React.useMemo(
+        () => (formData.provider_id ? providers.find((p) => p.id.toString() === formData.provider_id) : null),
+        [formData.provider_id, providers]
+    )
 
     // Testing
     const [testingApiKeyId, setTestingApiKeyId] = React.useState<number | null>(null)
@@ -169,6 +175,7 @@ export default function CustomerAiSettingsPage() {
             api_key: "",
             api_secret: "",
             endpoint_url: "",
+            deployment_name: "",
             organization_id: "",
             project_id: "",
             is_active: true,
@@ -181,6 +188,7 @@ export default function CustomerAiSettingsPage() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
+            const isAzure = selectedProvider?.slug === "azure_openai"
             const res = await customerAiKeyService.create({
                 provider_id: parseInt(formData.provider_id),
                 name: formData.name,
@@ -192,6 +200,7 @@ export default function CustomerAiSettingsPage() {
                 is_active: formData.is_active,
                 priority: formData.priority,
                 scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
+                metadata: isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : undefined,
             })
             if (res.success) {
                 toast.success("API Key added successfully")
@@ -207,18 +216,19 @@ export default function CustomerAiSettingsPage() {
         e.preventDefault()
         if (!selectedApiKey) return
         try {
+            const isAzure = selectedApiKey.provider?.slug === "azure_openai"
+            const existingMeta = selectedApiKey.metadata || {}
             const res = await customerAiKeyService.update(selectedApiKey.id, {
                 name: formData.name,
-                api_key: formData.api_key || undefined, // Only send if changed? Logic might need adjustment but usually fine
+                api_key: formData.api_key || undefined,
                 api_secret: formData.api_secret || undefined,
                 endpoint_url: formData.endpoint_url || undefined,
                 organization_id: formData.organization_id || undefined,
                 project_id: formData.project_id || undefined,
                 is_active: formData.is_active,
                 priority: formData.priority,
-                scopes: formData.scopes.length > 0 ? formData.scopes : undefined, // If passing undefined, it might not update scopes appropriately? DTO handles optional.
-                // Actually UpdateDTO has optional everything. Sending just what changed is better visually but sending full form is easier.
-                // Existing logic replaces.
+                scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
+                metadata: isAzure ? { ...existingMeta, deployment_name: formData.deployment_name || undefined } : undefined,
             })
             if (res.success) {
                 toast.success("API Key updated successfully")
@@ -284,29 +294,26 @@ export default function CustomerAiSettingsPage() {
         setFormData({
             provider_id: key.provider_id.toString(),
             name: key.name,
-            api_key: "", // Don't show existing key for security, user re-enters to change
+            api_key: "",
             api_secret: "",
-            endpoint_url: "", // Might want to fetch details if returned, usually not returned in list?
+            endpoint_url: key.endpoint_url || "",
+            deployment_name: key.metadata?.deployment_name || "",
             organization_id: "",
             project_id: "",
             is_active: key.is_active,
             priority: key.priority,
-            // Scopes isn't in simplified AiApiKey interface but backend returns it.
-            // Assuming listing returns scopes. If not, fetched in detailed show/edit? 
-            // For now, assume empty.
             scopes: [],
         })
-        // Ideally fetch details:
-        customerAiKeyService.get(key.id).then(res => {
+        customerAiKeyService.get(key.id).then((res) => {
             if (res.success && res.data) {
-                const d = res.data as any
-                setFormData(prev => ({
+                const d = res.data
+                setFormData((prev) => ({
                     ...prev,
-                    endpoint_url: d.endpoint_url || "",
-                    organization_id: d.organization_id || "",
-                    project_id: d.project_id || "",
-                    scopes: d.scopes || [],
-                    // Still keep api_key empty
+                    endpoint_url: d.endpoint_url ?? prev.endpoint_url,
+                    organization_id: d.organization_id ?? prev.organization_id,
+                    project_id: d.project_id ?? prev.project_id,
+                    scopes: d.scopes ?? prev.scopes,
+                    deployment_name: d.metadata?.deployment_name ?? prev.deployment_name,
                 }))
             }
         })
@@ -451,12 +458,14 @@ export default function CustomerAiSettingsPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="provider">Provider</Label>
                                 <Select
-                                    value={formData.provider_id}
-                                    onValueChange={(val) => setFormData({ ...formData, provider_id: val || "" })}
+                                    value={formData.provider_id || undefined}
+                                    onValueChange={(val) => setFormData({ ...formData, provider_id: val ?? "" })}
                                     required
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select provider" />
+                                        <SelectValue placeholder="Select provider">
+                                            {formData.provider_id && selectedProvider ? selectedProvider.name : undefined}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {providers.map(p => (
@@ -471,33 +480,77 @@ export default function CustomerAiSettingsPage() {
                                 </Select>
                             </div>
 
+                            {selectedProvider?.slug === "azure_openai" && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="endpoint_url">Endpoint URL *</Label>
+                                        <Input
+                                            id="endpoint_url"
+                                            value={formData.endpoint_url}
+                                            onChange={e => setFormData({ ...formData, endpoint_url: e.target.value })}
+                                            placeholder="https://your-resource.openai.azure.com"
+                                            required
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            From Azure Portal → your resource → Keys and Endpoint
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="deployment_name">Deployment name *</Label>
+                                        <Input
+                                            id="deployment_name"
+                                            value={formData.deployment_name}
+                                            onChange={e => setFormData({ ...formData, deployment_name: e.target.value })}
+                                            placeholder="e.g. gpt-35-turbo"
+                                            required
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            The deployment name from Azure OpenAI Studio (Model deployments)
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+
                             <div className="space-y-2">
                                 <Label htmlFor="name">Friendly Name</Label>
                                 <Input
                                     id="name"
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g. My OpenAI Key"
+                                    placeholder={selectedProvider?.slug === "azure_openai" ? "e.g. My Azure OpenAI" : "e.g. My OpenAI Key"}
                                     required
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="api_key">API Key</Label>
+                                <Label htmlFor="api_key">{selectedProvider?.slug === "azure_openai" ? "API Key (Key 1) *" : "API Key *"}</Label>
                                 <div className="relative">
                                     <Input
                                         id="api_key"
                                         type="password"
                                         value={formData.api_key}
                                         onChange={e => setFormData({ ...formData, api_key: e.target.value })}
-                                        placeholder="sk-..."
+                                        placeholder={selectedProvider?.slug === "azure_openai" ? "Azure API key (Key 1)" : "sk-..."}
                                         required
                                         className="pr-8"
                                     />
                                 </div>
                             </div>
 
-                            {/* Optional fields based on provider? For simplicity showing common ones */}
+                            {selectedProvider?.slug === "azure_openai" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="api_secret">API Key (Key 2) <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                    <Input
+                                        id="api_secret"
+                                        type="password"
+                                        value={formData.api_secret}
+                                        onChange={e => setFormData({ ...formData, api_secret: e.target.value })}
+                                        placeholder="Optional – for key rotation"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Optional fields based on provider */}
                             <div className="space-y-2">
                                 <Label>Scopes (Optional)</Label>
                                 <div className="grid grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto">
@@ -547,6 +600,31 @@ export default function CustomerAiSettingsPage() {
                             <DialogTitle>Edit API Key</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleUpdate} className="space-y-4 py-4">
+                            {selectedApiKey?.provider?.slug === "azure_openai" && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-endpoint_url">Endpoint URL *</Label>
+                                        <Input
+                                            id="edit-endpoint_url"
+                                            value={formData.endpoint_url}
+                                            onChange={e => setFormData({ ...formData, endpoint_url: e.target.value })}
+                                            placeholder="https://your-resource.openai.azure.com"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-deployment_name">Deployment name *</Label>
+                                        <Input
+                                            id="edit-deployment_name"
+                                            value={formData.deployment_name}
+                                            onChange={e => setFormData({ ...formData, deployment_name: e.target.value })}
+                                            placeholder="e.g. gpt-35-turbo"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             <div className="space-y-2">
                                 <Label htmlFor="edit-name">Friendly Name</Label>
                                 <Input
@@ -557,15 +635,30 @@ export default function CustomerAiSettingsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-api_key">New API Key (Leave blank to keep current)</Label>
+                                <Label htmlFor="edit-api_key">
+                                    {selectedApiKey?.provider?.slug === "azure_openai" ? "New API Key (Key 1) – leave blank to keep" : "New API Key (Leave blank to keep current)"}
+                                </Label>
                                 <Input
                                     id="edit-api_key"
                                     type="password"
                                     value={formData.api_key}
                                     onChange={e => setFormData({ ...formData, api_key: e.target.value })}
-                                    placeholder="Enter new key ONLY if changing"
+                                    placeholder="Enter new key only if changing"
                                 />
                             </div>
+
+                            {selectedApiKey?.provider?.slug === "azure_openai" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-api_secret">API Key (Key 2) – leave blank to keep</Label>
+                                    <Input
+                                        id="edit-api_secret"
+                                        type="password"
+                                        value={formData.api_secret}
+                                        onChange={e => setFormData({ ...formData, api_secret: e.target.value })}
+                                        placeholder="Optional"
+                                    />
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label>Scopes (Optional)</Label>

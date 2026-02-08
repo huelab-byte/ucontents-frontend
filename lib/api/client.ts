@@ -45,6 +45,23 @@ const getApiBaseUrl = (): string => {
   return apiUrl || 'http://localhost:8000/api'
 }
 
+/** Message patterns that indicate missing or invalid AI API key (show persistent toast so user can fix). */
+const API_KEY_ERROR_PATTERNS = [
+  /no available api key/i,
+  /no active.*api key/i,
+  /invalid.*api key/i,
+  /incorrect api key/i,
+  /authentication failed/i,
+  /endpoint not found/i,
+  /invalid_api_key/i,
+  /please verify your api key/i,
+  /please check.*endpoint/i,
+]
+
+function isApiKeyRelatedError(message: string): boolean {
+  return API_KEY_ERROR_PATTERNS.some((pattern) => pattern.test(message))
+}
+
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: getApiBaseUrl(),
@@ -102,15 +119,19 @@ apiClient.interceptors.response.use(
     let errorMessage = 'An error occurred.'
     let errorDescription: string | undefined
     
-    // Handle network errors
+    // Handle network errors (no response: timeout, connection refused, DNS, etc.)
     if (!error.response) {
-      errorMessage = 'Network error. Please check your connection.'
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout')
+      errorMessage = isTimeout
+        ? 'Request timed out. The server may be busy—try again in a moment.'
+        : 'Network error. Please check your connection.'
       if (shouldShowToast) {
         toast.error(errorMessage)
       }
       return Promise.reject({
         success: false,
         message: errorMessage,
+        code: error.code,
       })
     }
 
@@ -209,7 +230,14 @@ apiClient.interceptors.response.use(
       }
       
       if (shouldShowToast) {
-        toast.error(errorMessage, errorDescription)
+        if (isApiKeyRelatedError(errorMessage)) {
+          toast.errorPersistent(
+            'AI request failed: API key missing or invalid',
+            errorDescription || 'Go to Configuration → AI Settings to add or update your API key.'
+          )
+        } else {
+          toast.error(errorMessage, errorDescription)
+        }
       }
       return Promise.reject({
         success: false,
@@ -218,10 +246,17 @@ apiClient.interceptors.response.use(
       })
     }
 
-    // Handle other errors
+    // Handle other errors (5xx, 4xx not handled above)
     errorMessage = error.response.data?.message || error.message || 'An error occurred.'
     if (shouldShowToast) {
-      toast.error(errorMessage)
+      if (isApiKeyRelatedError(errorMessage)) {
+        toast.errorPersistent(
+          'AI request failed: API key missing or invalid',
+          `${errorMessage} Go to Configuration → AI Settings to add or update your API key.`
+        )
+      } else {
+        toast.error(errorMessage)
+      }
     }
     return Promise.reject({
       success: false,

@@ -33,6 +33,7 @@ export interface AiApiKey {
   endpoint_url: string | null
   organization_id: string | null
   project_id: string | null
+  metadata?: AiApiKeyMetadata
   is_active: boolean
   priority: number
   rate_limit_per_minute: number | null

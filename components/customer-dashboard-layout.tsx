@@ -24,6 +24,7 @@ import {
   AlertCircleIcon,
   CheckmarkCircle02Icon,
   Delete02Icon,
+  Edit02Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { useNotifications } from "@/lib/notifications-context"
@@ -141,6 +142,18 @@ function HeaderContent() {
       </div>
       <div className="flex-1" />
       <div className="flex items-center gap-2 px-4">
+        <Button
+          variant="default"
+          size="sm"
+          className={cn(
+            "bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-2",
+            (pathname === "/compose" || pathname?.startsWith("/social-automation")) && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+          )}
+          onClick={() => router.push("/compose")}
+        >
+          <HugeiconsIcon icon={Edit02Icon} strokeWidth={1.5} className="size-4" />
+          Compose
+        </Button>
         <ThemeToggle />
         <DropdownMenu open={showNotifications} onOpenChange={handleNotificationsOpenChange}>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-9 relative" />}>

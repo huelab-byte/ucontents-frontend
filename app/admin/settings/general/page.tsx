@@ -21,7 +21,6 @@ import {
   GlobeIcon,
   Mail01Icon,
   Link01Icon,
-  Upload01Icon,
   CancelCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"

@@ -7,6 +7,10 @@ export interface AiApiKey {
     user_id: number | null
     name: string
     api_key: string // masked
+    endpoint_url?: string | null
+    organization_id?: string | null
+    project_id?: string | null
+    scopes?: string[]
     is_active: boolean
     priority: number
     rate_limit_per_minute: number | null
@@ -15,12 +19,19 @@ export interface AiApiKey {
     total_tokens: number
     last_used_at: string | null
     created_at: string
+    metadata?: AiApiKeyMetadata
     provider?: {
         id: number
         name: string
         slug: string
-        logo_url: string
+        logo_url?: string
     }
+}
+
+export interface AiApiKeyMetadata {
+    deployment_name?: string
+    api_version?: string
+    [key: string]: unknown
 }
 
 export interface CreateAiApiKeyDTO {
@@ -35,6 +46,7 @@ export interface CreateAiApiKeyDTO {
     priority?: number
     rate_limit_per_minute?: number
     rate_limit_per_day?: number
+    metadata?: AiApiKeyMetadata
     scopes?: string[]
 }
 
@@ -49,6 +61,7 @@ export interface UpdateAiApiKeyDTO {
     priority?: number
     rate_limit_per_minute?: number
     rate_limit_per_day?: number
+    metadata?: AiApiKeyMetadata
     scopes?: string[]
 }
 

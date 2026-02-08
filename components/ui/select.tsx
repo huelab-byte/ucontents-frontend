@@ -50,11 +50,13 @@ function SelectValue({ className, placeholder, children, ...props }: SelectPrimi
       data-placeholder={placeholder}
       {...props}
     >
-      {placeholder ? (renderProps) => {
-        // Type the renderProps to see what's available
-        const props = renderProps as any
-        const value = props.value
-        
+      {placeholder ? (renderProps: Record<string, unknown> | null) => {
+        // Base UI may pass null when no value is selected or during initial render
+        if (renderProps == null) {
+          return <span className="text-muted-foreground">{placeholder}</span>
+        }
+        const value = renderProps.value
+
         // Show placeholder when there's no value
         if (!value) {
           return <span className="text-muted-foreground">{placeholder}</span>
@@ -62,7 +64,8 @@ function SelectValue({ className, placeholder, children, ...props }: SelectPrimi
         
         // Try to get the text from various possible properties
         // base-ui might provide: text, label, children, or selectedItem
-        const text = props.text || props.label || props.children || props.selectedItem?.text || props.selectedItem?.label
+        const selectedItem = renderProps.selectedItem as { text?: string; label?: string } | undefined
+        const text = (renderProps.text as string | undefined) ?? (renderProps.label as string | undefined) ?? (renderProps.children as string | undefined) ?? selectedItem?.text ?? selectedItem?.label
         
         if (text) {
           return <span className="text-foreground">{text}</span>

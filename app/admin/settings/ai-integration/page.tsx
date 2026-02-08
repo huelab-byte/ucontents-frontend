@@ -120,6 +120,7 @@ export default function AiIntegrationPage() {
     api_key: "",
     api_secret: "",
     endpoint_url: "",
+    deployment_name: "",
     organization_id: "",
     project_id: "",
     is_active: true,
@@ -272,6 +273,7 @@ export default function AiIntegrationPage() {
   const handleCreateApiKey = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const isAzure = selectedProvider?.slug === 'azure_openai'
       const response = await aiIntegrationService.createApiKey({
         provider_id: parseInt(formData.provider_id),
         name: formData.name,
@@ -285,6 +287,7 @@ export default function AiIntegrationPage() {
         rate_limit_per_minute: formData.rate_limit_per_minute ? parseInt(formData.rate_limit_per_minute) : undefined,
         rate_limit_per_day: formData.rate_limit_per_day ? parseInt(formData.rate_limit_per_day) : undefined,
         scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
+        metadata: isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : undefined,
       })
       if (response.success && response.data) {
         setApiKeys((prev) => [response.data!, ...prev])
@@ -301,6 +304,8 @@ export default function AiIntegrationPage() {
     e.preventDefault()
     if (!selectedApiKey) return
     try {
+      const isAzure = selectedProvider?.slug === 'azure_openai'
+      const existingMeta = selectedApiKey.metadata || {}
       const response = await aiIntegrationService.updateApiKey(selectedApiKey.id, {
         name: formData.name,
         api_key: formData.api_key || undefined,
@@ -313,6 +318,7 @@ export default function AiIntegrationPage() {
         rate_limit_per_minute: formData.rate_limit_per_minute ? parseInt(formData.rate_limit_per_minute) : undefined,
         rate_limit_per_day: formData.rate_limit_per_day ? parseInt(formData.rate_limit_per_day) : undefined,
         scopes: formData.scopes,
+        metadata: isAzure ? { ...existingMeta, deployment_name: formData.deployment_name || undefined } : undefined,
       })
       if (response.success && response.data) {
         setApiKeys((prev) => prev.map((k) => k.id === selectedApiKey.id ? response.data! : k))
@@ -398,6 +404,7 @@ export default function AiIntegrationPage() {
       api_key: "",
       api_secret: "",
       endpoint_url: "",
+      deployment_name: "",
       organization_id: "",
       project_id: "",
       is_active: true,
@@ -459,12 +466,14 @@ export default function AiIntegrationPage() {
     setSelectedApiKey(apiKey)
     const provider = apiKey.provider || providers.find(p => p.id === apiKey.provider_id)
     setSelectedProvider(provider || null)
+    const metadata = apiKey.metadata
     setFormData({
       provider_id: apiKey.provider_id.toString(),
       name: apiKey.name,
       api_key: "", // Don't show existing key
       api_secret: "",
       endpoint_url: apiKey.endpoint_url || "",
+      deployment_name: metadata?.deployment_name || "",
       organization_id: apiKey.organization_id || "",
       project_id: apiKey.project_id || "",
       is_active: apiKey.is_active,
@@ -1121,35 +1130,13 @@ export default function AiIntegrationPage() {
                         <Input
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="e.g., Production OpenAI Key"
+                          placeholder={selectedProvider?.slug === 'azure_openai' ? "e.g., Production Azure OpenAI" : "e.g., Production OpenAI Key"}
                           required
                         />
                       </FieldContent>
                     </Field>
 
-                    <Field>
-                      <FieldLabel>API Key *</FieldLabel>
-                      <FieldContent>
-                        <div className="relative">
-                          <Input
-                            type={showApiKey ? "text" : "password"}
-                            value={formData.api_key}
-                            onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                            placeholder="Enter API key"
-                            required
-                            className="pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowApiKey(!showApiKey)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            <HugeiconsIcon icon={EyeIcon} className="size-4" />
-                          </button>
-                        </div>
-                      </FieldContent>
-                    </Field>
-
+                    {/* Azure OpenAI: Endpoint first, then Key 1, Key 2 */}
                     {selectedProvider && getProviderFields(selectedProvider.slug).endpoint_url.show && (
                       <Field>
                         <FieldLabel>
@@ -1164,9 +1151,75 @@ export default function AiIntegrationPage() {
                           />
                           {selectedProvider.slug === 'azure_openai' && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              Format: https://your-resource.openai.azure.com
+                              Format: https://your-resource.openai.azure.com or https://your-resource.openai.azure.com/openai
                             </p>
                           )}
+                        </FieldContent>
+                      </Field>
+                    )}
+
+                    {selectedProvider?.slug === 'azure_openai' && (
+                      <Field>
+                        <FieldLabel>Deployment name *</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            value={formData.deployment_name}
+                            onChange={(e) => setFormData({ ...formData, deployment_name: e.target.value })}
+                            placeholder="e.g. gpt-35-turbo or my-chat-deployment"
+                            required
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            The deployment name you gave this model in Azure OpenAI Studio (Model deployments).
+                          </p>
+                        </FieldContent>
+                      </Field>
+                    )}
+
+                    <Field>
+                      <FieldLabel>
+                        {selectedProvider?.slug === 'azure_openai' ? 'API Key (Key 1) *' : 'API Key *'}
+                      </FieldLabel>
+                      <FieldContent>
+                        <div className="relative">
+                          <Input
+                            type={showApiKey ? "text" : "password"}
+                            value={formData.api_key}
+                            onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                            placeholder={selectedProvider?.slug === 'azure_openai' ? "Enter your Azure OpenAI API key (Key 1)" : "Enter API key"}
+                            required
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            <HugeiconsIcon icon={EyeIcon} className="size-4" />
+                          </button>
+                        </div>
+                      </FieldContent>
+                    </Field>
+
+                    {selectedProvider?.slug === 'azure_openai' && (
+                      <Field>
+                        <FieldLabel>API Key (Key 2) <span className="font-normal text-muted-foreground">(Optional)</span></FieldLabel>
+                        <FieldContent>
+                          <div className="relative">
+                            <Input
+                              type={showApiKey ? "text" : "password"}
+                              value={formData.api_secret}
+                              onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
+                              placeholder="Optional - for key rotation (Azure provides two keys)"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              <HugeiconsIcon icon={EyeIcon} className="size-4" />
+                            </button>
+                          </div>
                         </FieldContent>
                       </Field>
                     )}
@@ -1404,8 +1457,48 @@ export default function AiIntegrationPage() {
                       </FieldContent>
                     </Field>
 
+                    {selectedProvider && getProviderFields(selectedProvider.slug).endpoint_url.show && (
+                      <Field>
+                        <FieldLabel>
+                          Endpoint URL {getProviderFields(selectedProvider.slug).endpoint_url.required && '*'}
+                        </FieldLabel>
+                        <FieldContent>
+                          <Input
+                            value={formData.endpoint_url}
+                            onChange={(e) => setFormData({ ...formData, endpoint_url: e.target.value })}
+                            placeholder={getProviderFields(selectedProvider.slug).endpoint_url.placeholder}
+                            required={getProviderFields(selectedProvider.slug).endpoint_url.required}
+                          />
+                          {selectedProvider.slug === 'azure_openai' && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Format: https://your-resource.openai.azure.com or https://your-resource.openai.azure.com/openai
+                            </p>
+                          )}
+                        </FieldContent>
+                      </Field>
+                    )}
+
+                    {selectedProvider?.slug === 'azure_openai' && (
+                      <Field>
+                        <FieldLabel>Deployment name *</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            value={formData.deployment_name}
+                            onChange={(e) => setFormData({ ...formData, deployment_name: e.target.value })}
+                            placeholder="e.g. gpt-35-turbo or my-chat-deployment"
+                            required
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            The deployment name from Azure OpenAI Studio (Model deployments).
+                          </p>
+                        </FieldContent>
+                      </Field>
+                    )}
+
                     <Field>
-                      <FieldLabel>API Key</FieldLabel>
+                      <FieldLabel>
+                        {selectedProvider?.slug === 'azure_openai' ? 'API Key (Key 1)' : 'API Key'}
+                      </FieldLabel>
                       <FieldContent>
                         <div className="relative">
                           <Input
@@ -1427,14 +1520,16 @@ export default function AiIntegrationPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel>API Secret (Optional)</FieldLabel>
+                      <FieldLabel>
+                        {selectedProvider?.slug === 'azure_openai' ? 'API Key (Key 2) (Optional)' : 'API Secret (Optional)'}
+                      </FieldLabel>
                       <FieldContent>
                         <div className="relative">
                           <Input
                             type={showApiKey ? "text" : "password"}
                             value={formData.api_secret}
                             onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
-                            placeholder="Leave blank to keep existing secret"
+                            placeholder={selectedProvider?.slug === 'azure_openai' ? "Leave blank to keep existing Key 2" : "Leave blank to keep existing secret"}
                             className="pr-10"
                           />
                           <button
@@ -1447,27 +1542,6 @@ export default function AiIntegrationPage() {
                         </div>
                       </FieldContent>
                     </Field>
-
-                    {selectedProvider && getProviderFields(selectedProvider.slug).endpoint_url.show && (
-                      <Field>
-                        <FieldLabel>
-                          Endpoint URL {getProviderFields(selectedProvider.slug).endpoint_url.required && '*'}
-                        </FieldLabel>
-                        <FieldContent>
-                          <Input
-                            value={formData.endpoint_url}
-                            onChange={(e) => setFormData({ ...formData, endpoint_url: e.target.value })}
-                            placeholder={getProviderFields(selectedProvider.slug).endpoint_url.placeholder}
-                            required={getProviderFields(selectedProvider.slug).endpoint_url.required}
-                          />
-                          {selectedProvider.slug === 'azure_openai' && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Format: https://your-resource.openai.azure.com
-                            </p>
-                          )}
-                        </FieldContent>
-                      </Field>
-                    )}
 
                     {selectedProvider && getProviderFields(selectedProvider.slug).organization_id.show && (
                       <div className="grid grid-cols-2 gap-4">

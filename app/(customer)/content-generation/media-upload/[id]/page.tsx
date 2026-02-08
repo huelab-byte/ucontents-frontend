@@ -35,6 +35,19 @@ import {
   type MediaUploadQueueStatus,
 } from "@/lib/api"
 import { toast } from "@/lib/toast"
+
+/** Detect backend errors that mean the user should configure/update API key in AI Settings. */
+function isApiKeyRelatedError(message: string | null | undefined): boolean {
+  if (!message) return false
+  const lower = message.toLowerCase()
+  return (
+    lower.includes("no available api key") ||
+    lower.includes("no active") ||
+    lower.includes("api key") ||
+    lower.includes("endpoint not found") ||
+    lower.includes("authentication failed")
+  )
+}
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 
 function mapFolderToSource(f: MediaUploadFolder): ContentSource {
@@ -166,6 +179,7 @@ export default function MediaUploadFolderDetailsPage() {
   const folderId = parseInt(rawId, 10)
 
   const [folder, setFolder] = React.useState<MediaUploadFolder | null>(null)
+  const [allFolders, setAllFolders] = React.useState<MediaUploadFolder[]>([])
   const [contentSettings, setContentSettings] = React.useState<MediaUploadContentSettings | null>(null)
   const [captionTemplates, setCaptionTemplates] = React.useState<ApiCaptionTemplate[]>([])
   const [promptTemplates, setPromptTemplates] = React.useState<{ id: string; name: string; prompt: string }[]>([])
@@ -184,6 +198,7 @@ export default function MediaUploadFolderDetailsPage() {
   const [queueItemMap, setQueueItemMap] = React.useState<Map<string, number>>(new Map())
   const [isUploading, setIsUploading] = React.useState(false)
   const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
+  const failedToastShownForRef = React.useRef<Set<string>>(new Set())
 
   const [captionSettings, setCaptionSettings] = React.useState<CaptionSettings>({
     templateId: "",
@@ -244,8 +259,9 @@ export default function MediaUploadFolderDetailsPage() {
     }
     setIsLoading(true)
     try {
-      const [folderRes, settingsRes, captionsRes, uploadsRes, promptsRes, queueRes] = await Promise.all([
+      const [folderRes, foldersRes, settingsRes, captionsRes, uploadsRes, promptsRes, queueRes] = await Promise.all([
         mediaUploadService.getFolder(folderId),
+        mediaUploadService.listFolders(),
         mediaUploadService.getContentSettings(folderId),
         mediaUploadService.listCaptionTemplates(),
         // Initial load page 1 defaults
@@ -254,6 +270,7 @@ export default function MediaUploadFolderDetailsPage() {
         mediaUploadService.listQueue({ folder_id: folderId, status: "pending,processing" }),
       ])
       if (folderRes.success && folderRes.data) setFolder(folderRes.data)
+      if (foldersRes.success && Array.isArray(foldersRes.data)) setAllFolders(foldersRes.data)
       if (settingsRes.success) {
         setContentSettings(settingsRes.data ?? null)
         setPromptSettings(mapContentSettingsToPromptSettings(settingsRes.data ?? null))
@@ -355,11 +372,14 @@ export default function MediaUploadFolderDetailsPage() {
     loadData()
   }, [loadData])
 
-  const handlePageChange = React.useCallback(async (page: number) => {
-    if (Number.isNaN(folderId)) return
-    setIsMetadataLoading(true)
-    try {
-      const res = await mediaUploadService.listUploads({ folder_id: folderId, page, per_page: pagination.per_page })
+  const fetchUploadsPage = React.useCallback(
+    async (page: number) => {
+      if (Number.isNaN(folderId)) return
+      const res = await mediaUploadService.listUploads({
+        folder_id: folderId,
+        page,
+        per_page: pagination.per_page,
+      })
       if (res.success && res.data) {
         const data = Array.isArray(res.data) ? res.data : (res.data as { data?: MediaUpload[] })?.data ?? []
         if (res.pagination) {
@@ -367,17 +387,87 @@ export default function MediaUploadFolderDetailsPage() {
             current_page: res.pagination.current_page,
             last_page: res.pagination.last_page,
             per_page: res.pagination.per_page,
-            total: res.pagination.total
+            total: res.pagination.total,
           })
         }
         setContentMetadata(data.map(mapMediaUploadToMetadata))
       }
+      return res
+    },
+    [folderId, pagination.per_page]
+  )
+
+  const handlePageChange = React.useCallback(
+    async (page: number) => {
+      if (Number.isNaN(folderId)) return
+      setIsMetadataLoading(true)
+      try {
+        await fetchUploadsPage(page)
+      } catch (err) {
+        toast.error("Failed to load page")
+      } finally {
+        setIsMetadataLoading(false)
+      }
+    },
+    [folderId, fetchUploadsPage]
+  )
+
+  /** Refetch list after delete; if current page is empty, load previous page. */
+  const refetchAfterDelete = React.useCallback(async () => {
+    if (Number.isNaN(folderId)) return
+    setIsMetadataLoading(true)
+    try {
+      const page = pagination.current_page
+      const res = await mediaUploadService.listUploads({
+        folder_id: folderId,
+        page,
+        per_page: pagination.per_page,
+      })
+      if (res.success && res.data) {
+        const data = Array.isArray(res.data) ? res.data : (res.data as { data?: MediaUpload[] })?.data ?? []
+        if (res.pagination) {
+          const newTotal = res.pagination.total
+          const newLastPage = res.pagination.last_page
+          if (data.length === 0 && page > 1) {
+            const prevPage = Math.min(page - 1, newLastPage || 1)
+            const prevRes = await mediaUploadService.listUploads({
+              folder_id: folderId,
+              page: prevPage,
+              per_page: pagination.per_page,
+            })
+            if (prevRes.success && prevRes.data) {
+              const prevData = Array.isArray(prevRes.data)
+                ? prevRes.data
+                : (prevRes.data as { data?: MediaUpload[] })?.data ?? []
+              if (prevRes.pagination) {
+                setPagination({
+                  current_page: prevRes.pagination.current_page,
+                  last_page: prevRes.pagination.last_page,
+                  per_page: prevRes.pagination.per_page,
+                  total: prevRes.pagination.total,
+                })
+              }
+              setContentMetadata(prevData.map(mapMediaUploadToMetadata))
+            }
+          } else {
+            setPagination({
+              current_page: res.pagination!.current_page,
+              last_page: res.pagination!.last_page,
+              per_page: res.pagination!.per_page,
+              total: res.pagination!.total,
+            })
+            setContentMetadata(data.map(mapMediaUploadToMetadata))
+          }
+        } else {
+          setContentMetadata(data.map(mapMediaUploadToMetadata))
+        }
+      }
     } catch (err) {
-      toast.error("Failed to load page")
+      toast.error("Failed to refresh list")
     } finally {
       setIsMetadataLoading(false)
     }
-  }, [folderId, pagination.per_page])
+  }, [folderId, pagination.current_page, pagination.per_page])
 
   const saveContentSettings = React.useCallback(
     async (updates: Partial<PromptSettings>) => {
@@ -483,11 +573,19 @@ export default function MediaUploadFolderDetailsPage() {
                 })
                 .catch(() => { })
             } else if (q.status === "failed") {
+              const errorMsg = q.error_message ?? "Processing failed"
               setProcessingQueue((prev) =>
                 prev.map((f) =>
-                  f.id === fileKey ? { ...f, status: "FAILED" as const, error: q.error_message ?? "Failed" } : f
+                  f.id === fileKey ? { ...f, status: "FAILED" as const, error: errorMsg } : f
                 )
               )
+              if (isApiKeyRelatedError(errorMsg) && !failedToastShownForRef.current.has(fileKey)) {
+                failedToastShownForRef.current.add(fileKey)
+                toast.errorPersistent(
+                  "Upload failed: API key missing or invalid",
+                  `${errorMsg} Go to Configuration → AI Settings to add or update your API key.`
+                )
+              }
             } else {
               anyActive = true
               setProcessingQueue((prev) =>
@@ -518,17 +616,40 @@ export default function MediaUploadFolderDetailsPage() {
     }
   }, [queueItemMap.size, pollQueueStatus])
 
+  const MAX_UPLOAD_FILES = 1000
+
   const handleFileUpload = (files: FileList | null) => {
     if (!files) return
     const fileArray = Array.from(files)
-    const newFiles: VideoFile[] = fileArray.map((file, index) => {
-      const fileId = `file-${Date.now()}-${index}`
-      const objectUrl = URL.createObjectURL(file)
-      objectUrlsRef.current.set(fileId, objectUrl)
-      return { id: fileId, filename: file.name, fileSize: file.size, status: "QUEUED" as const, url: objectUrl }
+    setUploadQueue((prev) => {
+      const cap = MAX_UPLOAD_FILES - prev.length
+      if (cap <= 0) {
+        toast.error(`Maximum ${MAX_UPLOAD_FILES} files. Remove some from the queue to add more.`)
+        return prev
+      }
+      const toAdd = fileArray.slice(0, cap)
+      if (toAdd.length < fileArray.length) {
+        toast.warning(`Only ${toAdd.length} of ${fileArray.length} files added (max ${MAX_UPLOAD_FILES}).`)
+      }
+      const newFiles: VideoFile[] = toAdd.map((file, index) => {
+        const fileId = `file-${Date.now()}-${index}`
+        const objectUrl = URL.createObjectURL(file)
+        objectUrlsRef.current.set(fileId, objectUrl)
+        return {
+          id: fileId,
+          filename: file.name,
+          fileSize: file.size,
+          status: "QUEUED" as const,
+          url: objectUrl,
+          folderId: folderId,
+        }
+      })
+      return [...prev, ...newFiles]
     })
-    setUploadQueue((prev) => [...prev, ...newFiles])
   }
+
+  /** Max concurrent uploads. As soon as one file finishes, it moves to processing and the next starts. */
+  const UPLOAD_CONCURRENT = 5
 
   const handleStartUpload = async () => {
     if (uploadQueue.length === 0 || Number.isNaN(folderId) || isUploading) return
@@ -549,70 +670,71 @@ export default function MediaUploadFolderDetailsPage() {
       enable_reverse: captionSettings.enableAlternatingLoop,
     }
 
-    const BATCH_SIZE = 5
-    const queueCopy = [...uploadQueue]
+    const remaining = [...uploadQueue]
+    let hasError = false
+
+    const uploadOne = async (fileItem: VideoFile): Promise<void> => {
+      if (!fileItem.url) return
+      try {
+        const res = await fetch(fileItem.url)
+        const blob = await res.blob()
+        const file = new File([blob], fileItem.filename, { type: blob.type || "video/mp4" })
+        const targetFolderId = fileItem.folderId ?? folderId
+        const result = await mediaUploadService.uploadFileChunked(
+          file,
+          targetFolderId,
+          captionConfig,
+          (percent) => {
+            setUploadQueue((prev) =>
+              prev.map((f) => (f.id === fileItem.id ? { ...f, uploadProgress: percent } : f))
+            )
+          }
+        )
+        if (result?.success && result?.data?.queued_items?.[0]) {
+          const item = result.data.queued_items[0]
+          setQueueItemMap((prev) => {
+            const next = new Map(prev)
+            next.set(fileItem.id, item.id)
+            return next
+          })
+          setUploadQueue((prev) => prev.filter((f) => f.id !== fileItem.id))
+          setProcessingQueue((prev) => [
+            ...prev,
+            { ...fileItem, status: "UPLOADING" as const, uploadProgress: 0 },
+          ])
+        } else {
+          hasError = true
+          toast.error(`Failed to upload ${fileItem.filename}`)
+        }
+      } catch (err) {
+        console.error("Upload failed for file:", fileItem.filename, err)
+        hasError = true
+        toast.error(`Failed to upload ${fileItem.filename}`)
+      }
+    }
+
+    const runWorker = async (): Promise<void> => {
+      while (remaining.length > 0) {
+        const fileItem = remaining.shift()!
+        await uploadOne(fileItem)
+      }
+    }
 
     try {
-      for (let i = 0; i < queueCopy.length; i += BATCH_SIZE) {
-        const batch = queueCopy.slice(i, i + BATCH_SIZE)
+      const workers = Array.from(
+        { length: Math.min(UPLOAD_CONCURRENT, remaining.length) },
+        () => runWorker()
+      )
+      await Promise.all(workers)
 
-        // Prepare files for this batch
-        const realFiles = await Promise.all(
-          batch.map(async (f) => {
-            if (!f.url) return null
-            const res = await fetch(f.url)
-            const blob = await res.blob()
-            return new File([blob], f.filename, { type: blob.type || "video/mp4" })
-          })
-        )
-        const validFiles = realFiles.filter((x): x is File => x !== null)
-        if (validFiles.length === 0) continue
-
-        await mediaUploadService.bulkUpload(validFiles, folderId, captionConfig, (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          setUploadQueue((prev) =>
-            prev.map((f) => {
-              if (batch.some((bf) => bf.id === f.id)) {
-                return { ...f, uploadProgress: percent }
-              }
-              return f
-            })
-          )
-        }).then((res) => {
-          if (res.success && res.data?.queued_items) {
-            const items = res.data.queued_items as MediaUploadQueueStatus[]
-
-            // Prepare synchronous updates
-            const newMapEntries = new Map<string, number>()
-            const processedFiles: VideoFile[] = []
-
-            batch.forEach((f, idx) => {
-              if (items[idx]) {
-                newMapEntries.set(f.id, items[idx].id)
-                processedFiles.push({
-                  ...f,
-                  status: "UPLOADING" as const, // The poller will pick this up and verify status
-                  uploadProgress: 0 // Reset progress bar for processing stage
-                })
-              }
-            })
-
-            setQueueItemMap((prevMap) => {
-              const nextMap = new Map(prevMap)
-              newMapEntries.forEach((v, k) => nextMap.set(k, v))
-              return nextMap
-            })
-
-            // Update queues
-            setUploadQueue((prev) => prev.filter((f) => !batch.some((bf) => bf.id === f.id)))
-            setProcessingQueue((prev) => [...prev, ...processedFiles])
-          }
-        })
+      if (!hasError) {
+        toast.success("All uploads started successfully")
+      } else {
+        toast.warning("Some uploads failed to start")
       }
-      toast.success("Upload queue processing started")
     } catch (err) {
-      console.error("Upload failed:", err)
-      toast.error("Some uploads failed")
+      console.error("Critical upload error:", err)
+      toast.error("Critical upload error")
     } finally {
       setIsUploading(false)
     }
@@ -624,6 +746,12 @@ export default function MediaUploadFolderDetailsPage() {
   }
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+  }
+
+  const handleSetFolderForFile = (fileId: string, folderId: number) => {
+    setUploadQueue((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, folderId } : f))
+    )
   }
 
   const handleRemoveFromQueue = (fileId: string) => {
@@ -703,12 +831,16 @@ export default function MediaUploadFolderDetailsPage() {
     if (Number.isNaN(numId)) return
     try {
       await mediaUploadService.deleteUpload(numId)
-      setContentMetadata((prev) => prev.filter((item) => item.id !== deletingMetadata.id))
       setSelectedMetadataIds((prev) => {
         const next = new Set(prev)
         next.delete(deletingMetadata.id)
         return next
       })
+      setFolder((prev) =>
+        prev ? { ...prev, media_uploads_count: Math.max(0, (prev.media_uploads_count ?? 0) - 1) } : null
+      )
+      setDeletingMetadata(null)
+      await refetchAfterDelete()
       toast.success("Video deleted")
     } catch (err) {
       toast.error("Failed to delete video")
@@ -751,9 +883,15 @@ export default function MediaUploadFolderDetailsPage() {
         // continue
       }
     }
-    setContentMetadata((prev) => prev.filter((item) => !selectedMetadataIds.has(item.id)))
     setSelectedMetadataIds(new Set())
+    setIsBulkDeleteOpen(false)
     if (successCount > 0) {
+      setFolder((prev) =>
+        prev
+          ? { ...prev, media_uploads_count: Math.max(0, (prev.media_uploads_count ?? 0) - successCount) }
+          : null
+      )
+      await refetchAfterDelete()
       toast.success(
         successCount === 1 ? "1 video deleted successfully" : `${successCount} videos deleted successfully`
       )
@@ -761,7 +899,8 @@ export default function MediaUploadFolderDetailsPage() {
   }
 
   const totalQueued = uploadQueue.length
-  const totalProcessing = processingQueue.length
+  const totalProcessing = processingQueue.filter((f) => f.status !== "FAILED").length
+  const totalFailed = processingQueue.filter((f) => f.status === "FAILED").length
   const totalCompleted = completedFiles.length
 
   if (isLoading || !folder) {
@@ -917,10 +1056,12 @@ export default function MediaUploadFolderDetailsPage() {
                     onFileUpload={handleFileUpload}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
+                    hint="Up to 1000 files, 1 GB per file. Large files use chunked upload."
                   />
                   <UploadStatistics
                     totalQueued={totalQueued}
                     totalProcessing={totalProcessing}
+                    totalFailed={totalFailed}
                     totalCompleted={totalCompleted}
                   />
                   <UploadQueue

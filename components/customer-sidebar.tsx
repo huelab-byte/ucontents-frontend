@@ -73,57 +73,30 @@ const customerMenuItems = [
     url: "/dashboard",
     items: [] as { title: string; url: string; icon: any }[],
   },
-  //   {
-  //     title: "AI Chat",
-  //     icon: MachineRobotIcon,
-  //     url: "/ai-chat",
-  //     items: [],
-  //     permission: "use_ai_chat",
-  //   },
   {
-    title: "Connection",
+    title: "Connections",
     icon: Link01Icon,
     url: "/connection",
     items: [],
+    useBrandHighlight: true,
   },
+  
   {
-    title: "Proxy Setup",
-    icon: GlobalIcon,
-    url: "/proxy-setup",
+    title: "Social Automation",
+    icon: MachineRobotIcon,
+    url: "/social-automation/bulk-posting",
     items: [],
   },
   {
-    title: "Automation",
-    icon: MachineRobotIcon,
-    url: undefined,
-    items: [
-      {
-        title: "Bulk Posting",
-        url: "/social-automation/bulk-posting",
-        icon: Queue01Icon,
-      },
-      {
-        title: "Manual Posting",
-        url: "/social-automation/manual-posting",
-        icon: DocumentCodeIcon,
-      },
-    ],
-  },
-  {
-    title: "Content Generation",
+    title: "Collections",
     icon: File01Icon,
     url: undefined,
     items: [
       {
-        title: "Media Upload",
+        title: "Videos",
         url: "/content-generation/media-upload",
         icon: Database02Icon,
       },
-      // {
-      //   title: "Topic to Video",
-      //   url: "/content-generation/topic-to-video",
-      //   icon: File01Icon,
-      // },
     ],
   },
   {
@@ -150,12 +123,6 @@ const customerMenuItems = [
       },
     ],
   },
-  {
-    title: "Support",
-    icon: Ticket01Icon,
-    url: "/support/tickets",
-    items: [],
-  },
 ]
 
 const customerConfigItems = [
@@ -167,6 +134,12 @@ const customerConfigItems = [
         title: "AI Settings",
         url: "/configuration/ai-settings",
         icon: MachineRobotIcon,
+      },
+      {
+        title: "Proxy Setup",
+        icon: GlobalIcon,
+        url: "/proxy-setup",
+        items: [],
       },
       {
         title: "Help & Resources",
@@ -204,6 +177,11 @@ const customerProfileItems = [
     title: "Usage & Credits",
     url: "/profile/usage",
     icon: Analytics02Icon,
+  },
+  {
+    title: "Support",
+    url: "/support/tickets",
+    icon: Ticket01Icon,
   },
   {
     title: "Logout",
@@ -356,7 +334,11 @@ export function CustomerSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    isActive={pathname === item.url}
+                    isActive={(item as { useBrandHighlight?: boolean }).useBrandHighlight ? false : pathname === item.url}
+                    className={(item as { useBrandHighlight?: boolean }).useBrandHighlight
+                      ? "!bg-primary/10 !text-primary hover:!bg-primary/15 hover:!text-primary font-medium"
+                      : undefined
+                    }
                     onClick={(e) => {
                       if (item.url) {
                         e.preventDefault()

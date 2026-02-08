@@ -116,25 +116,53 @@ export function UploadQueue({
               </div>
             )}
 
-            {/* Processing Files */}
-            {totalProcessing > 0 && (
+            {/* Processing Files (uploading / in progress) */}
+            {processingQueue.filter((f) => f.status !== "FAILED").length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Processing ({totalProcessing})</h4>
+                <h4 className="text-sm font-medium">Processing ({processingQueue.filter((f) => f.status !== "FAILED").length})</h4>
                 <div className="space-y-2">
-                  {processingQueue.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center gap-2 p-2 border border-border rounded-lg bg-muted/30"
-                    >
-                      <HugeiconsIcon icon={Video01Icon} className="size-4 text-primary shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{file.filename}</p>
-                        {file.uploadProgress !== undefined && (
-                          <Progress value={file.uploadProgress} className="h-1 mt-1" />
-                        )}
+                  {processingQueue
+                    .filter((f) => f.status !== "FAILED")
+                    .map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-2 p-2 border border-border rounded-lg bg-muted/30"
+                      >
+                        <HugeiconsIcon icon={Video01Icon} className="size-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{file.filename}</p>
+                          {file.uploadProgress !== undefined && (
+                            <Progress value={file.uploadProgress} className="h-1 mt-1" />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Failed Files - show error so user can fix (e.g. configure API key) */}
+            {processingQueue.filter((f) => f.status === "FAILED").length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-destructive">Failed ({processingQueue.filter((f) => f.status === "FAILED").length})</h4>
+                <div className="space-y-2">
+                  {processingQueue
+                    .filter((f) => f.status === "FAILED")
+                    .map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-start gap-2 p-3 border border-destructive/50 rounded-lg bg-destructive/10"
+                      >
+                        <HugeiconsIcon icon={CancelCircleIcon} className="size-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{file.filename}</p>
+                          <p className="text-xs text-destructive mt-1">{file.error ?? "Processing failed"}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Go to <strong>Configuration → AI Settings</strong> to add or update your API key, then remove this item and try again.
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

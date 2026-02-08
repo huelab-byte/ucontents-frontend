@@ -15,6 +15,8 @@ interface UploadSectionProps {
   onDrop: (e: React.DragEvent) => void
   onDragOver: (e: React.DragEvent) => void
   uploadInputId?: string
+  /** Optional hint below the drop zone (e.g. "Up to 1000 files, 1 GB per file") */
+  hint?: string
 }
 
 export function UploadSection({
@@ -24,6 +26,7 @@ export function UploadSection({
   onDrop,
   onDragOver,
   uploadInputId = "video-upload-sidebar",
+  hint,
 }: UploadSectionProps) {
   return (
     <Collapsible open={isOpen} onOpenChange={onOpenChange}>
@@ -50,6 +53,7 @@ export function UploadSection({
               <HugeiconsIcon icon={Upload01Icon} className="size-6 mx-auto mb-2 text-muted-foreground" />
               <p className="text-xs font-medium mb-1">Drag & drop video files here</p>
               <p className="text-xs text-muted-foreground mb-3">or click to browse</p>
+              {hint && <p className="text-xs text-muted-foreground mb-3">{hint}</p>}
               <input
                 type="file"
                 multiple

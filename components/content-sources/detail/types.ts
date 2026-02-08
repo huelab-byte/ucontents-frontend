@@ -6,6 +6,8 @@ export interface VideoFile {
   uploadProgress?: number
   url?: string
   error?: string
+  /** Folder id for multi-folder upload; defaults to current folder when not set. */
+  folderId?: number
 }
 
 export interface ContentSource {

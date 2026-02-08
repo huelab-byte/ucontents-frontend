@@ -41,6 +41,7 @@ export default function BulkPostingPage() {
   const [items, setItems] = React.useState<BulkPostingItem[]>([])
   const [editingItem, setEditingItem] = React.useState<BulkPostingItem | null>(null)
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [currentPage, setCurrentPage] = React.useState(1)
   const [isLoading, setIsLoading] = React.useState(true)
   const [channels, setChannels] = React.useState<SocialChannel[]>([])
@@ -231,20 +232,11 @@ export default function BulkPostingPage() {
   return (
     <CustomerDashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Bulk Posting</h1>
-            <p className="text-muted-foreground mt-2">
-              Create and schedule multiple social media posts at once with batch upload and automated scheduling
-            </p>
-          </div>
-          <NewBulkPostingDialog
-            onCreate={handleCreate}
-            channels={channels}
-            groups={groups}
-            mediaFolders={flattenMediaFolders(mediaFolders)}
-            isLoadingConnections={isLoadingConnections}
-          />
+        <div>
+          <h1 className="text-3xl font-bold">Bulk Posting</h1>
+          <p className="text-muted-foreground mt-2">
+            Create and schedule multiple social media posts at once with batch upload and automated scheduling
+          </p>
         </div>
 
         {isLoading ? (
@@ -262,9 +254,20 @@ export default function BulkPostingPage() {
               onEdit={handleEdit}
               onPause={handlePause}
               onDelete={handleDeleteClick}
+              onCreateClick={() => setCreateDialogOpen(true)}
             />
           </>
         )}
+
+        <NewBulkPostingDialog
+          onCreate={handleCreate}
+          channels={channels}
+          groups={groups}
+          mediaFolders={flattenMediaFolders(mediaFolders)}
+          isLoadingConnections={isLoadingConnections}
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+        />
 
         <EditBulkPostingDialog
           item={editingItem}

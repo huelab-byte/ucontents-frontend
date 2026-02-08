@@ -25,6 +25,9 @@ interface NewBulkPostingDialogProps {
   groups?: SocialConnectionGroup[]
   mediaFolders?: { id: number; name: string }[]
   isLoadingConnections?: boolean
+  /** Controlled mode: when provided, dialog is controlled and no trigger is rendered */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function NewBulkPostingDialog({ 
@@ -33,8 +36,13 @@ export function NewBulkPostingDialog({
   groups = demoGroups,
   mediaFolders = [],
   isLoadingConnections = false,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: NewBulkPostingDialogProps) {
-  const [open, setOpen] = React.useState(false)
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const isControlled = openProp !== undefined && onOpenChangeProp !== undefined
+  const open = isControlled ? openProp : internalOpen
+  const setOpen = isControlled ? onOpenChangeProp! : setInternalOpen
   const [brandName, setBrandName] = React.useState("")
   const [projectName, setProjectName] = React.useState("")
   const [contentSourceType, setContentSourceType] = React.useState<ContentSourceType | "">("")
@@ -141,10 +149,12 @@ export function NewBulkPostingDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger render={<Button className="flex items-center gap-2" />}>
-        <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
-        Create Campaign
-      </AlertDialogTrigger>
+      {!isControlled && (
+        <AlertDialogTrigger render={<Button className="flex items-center gap-2" />}>
+          <HugeiconsIcon icon={PlusSignIcon} className="size-4" />
+          Create Campaign
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent className="!w-[650px] !max-w-[650px] max-w-[calc(100vw-2rem)] mx-4">
         <AlertDialogHeader>
           <AlertDialogTitle>Create New Bulk Posting Campaign</AlertDialogTitle>

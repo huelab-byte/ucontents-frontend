@@ -10,6 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Video01Icon,
@@ -23,6 +30,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils"
 import type { VideoFile } from "./types"
 
+interface FolderOption {
+  id: number
+  name: string
+}
+
 interface UploadQueueProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -34,6 +46,10 @@ interface UploadQueueProps {
   onDeleteCompleted: (fileId: string) => void
   onStartUpload?: () => void
   isUploading?: boolean
+  /** For multi-folder upload: list of folders to choose from. When length > 1, show folder dropdown per file. */
+  folders?: FolderOption[]
+  currentFolderId?: number
+  onFolderChange?: (fileId: string, folderId: number) => void
 }
 
 export function UploadQueue({
@@ -47,12 +63,17 @@ export function UploadQueue({
   onDeleteCompleted,
   onStartUpload,
   isUploading = false,
+  folders = [],
+  currentFolderId,
+  onFolderChange,
 }: UploadQueueProps) {
   const totalQueued = uploadQueue.length
-  const totalProcessing = processingQueue.length
+  const inProgress = processingQueue.filter((f) => f.status !== "FAILED").length
+  const totalFailed = processingQueue.filter((f) => f.status === "FAILED").length
+  const totalProcessing = inProgress
   const totalCompleted = completedFiles.length
 
-  if (totalQueued === 0 && totalProcessing === 0 && totalCompleted === 0) {
+  if (totalQueued === 0 && processingQueue.length === 0 && totalCompleted === 0) {
     return null
   }
 
@@ -125,6 +146,23 @@ export function UploadQueue({
                           <p className="text-xs text-muted-foreground">
                             {(file.fileSize / 1024 / 1024).toFixed(2)} MB
                           </p>
+                          {folders.length > 1 && onFolderChange && currentFolderId !== undefined && (
+                            <Select
+                              value={String(file.folderId ?? currentFolderId)}
+                              onValueChange={(v) => { if (v != null) onFolderChange(file.id, parseInt(v, 10)); }}
+                            >
+                              <SelectTrigger className="h-7 text-xs mt-1 w-full max-w-[140px]">
+                                <SelectValue placeholder="Folder" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {folders.map((f) => (
+                                  <SelectItem key={f.id} value={String(f.id)} className="text-xs">
+                                    {f.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                           {file.uploadProgress !== undefined && file.uploadProgress > 0 && (
                             <Progress value={file.uploadProgress} className="h-1 mt-1" />
                           )}
@@ -145,25 +183,53 @@ export function UploadQueue({
               </div>
             )}
 
-            {/* Processing Files */}
-            {totalProcessing > 0 && (
+            {/* Processing Files (in progress only) */}
+            {inProgress > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Processing ({totalProcessing})</h4>
+                <h4 className="text-sm font-medium">Processing ({inProgress})</h4>
                 <div className="space-y-2">
-                  {processingQueue.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center gap-2 p-2 border border-border rounded-lg bg-muted/30"
-                    >
-                      <HugeiconsIcon icon={Video01Icon} className="size-4 text-primary shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{file.filename}</p>
-                        {file.uploadProgress !== undefined && (
-                          <Progress value={file.uploadProgress} className="h-1 mt-1" />
-                        )}
+                  {processingQueue
+                    .filter((f) => f.status !== "FAILED")
+                    .map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-2 p-2 border border-border rounded-lg bg-muted/30"
+                      >
+                        <HugeiconsIcon icon={Video01Icon} className="size-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{file.filename}</p>
+                          {file.uploadProgress !== undefined && (
+                            <Progress value={file.uploadProgress} className="h-1 mt-1" />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Failed Files */}
+            {totalFailed > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-destructive">Failed ({totalFailed})</h4>
+                <div className="space-y-2">
+                  {processingQueue
+                    .filter((f) => f.status === "FAILED")
+                    .map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-start gap-2 p-3 border border-destructive/50 rounded-lg bg-destructive/10"
+                      >
+                        <HugeiconsIcon icon={CancelCircleIcon} className="size-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{file.filename}</p>
+                          <p className="text-xs text-destructive mt-1">{file.error ?? "Processing failed"}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Go to <strong>Configuration → AI Settings</strong> to add or update your API key, then remove this item and try again.
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

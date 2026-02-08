@@ -242,6 +242,78 @@ export const mediaUploadService = {
     })
   },
 
+  // Chunked Upload Methods
+  async initChunkUpload(
+    folderId: number,
+    filename: string,
+    totalChunks: number,
+    captionConfig?: any
+  ): Promise<ApiResponse<{ upload_id: string }>> {
+    return apiClient.post('/v1/customer/media-upload/init-chunk-upload', {
+      folder_id: folderId,
+      filename,
+      total_chunks: totalChunks,
+      caption_config: captionConfig ? JSON.stringify(captionConfig) : null,
+    }, { skipToast: true })
+  },
+
+  async uploadChunk(
+    uploadId: string,
+    chunkIndex: number,
+    chunk: Blob
+  ): Promise<ApiResponse<null>> {
+    const formData = new FormData()
+    formData.append('upload_id', uploadId)
+    formData.append('chunk_index', String(chunkIndex))
+    formData.append('file', chunk)
+    return apiClient.post('/v1/customer/media-upload/upload-chunk', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      skipToast: true,
+      timeout: 0,
+    })
+  },
+
+  async finishChunkUpload(uploadId: string): Promise<ApiResponse<{ queued_items: UploadQueueStatus[]; count: number }>> {
+    return apiClient.post('/v1/customer/media-upload/finish-chunk-upload', {
+      upload_id: uploadId,
+    }, { skipToast: true })
+  },
+
+  async uploadFileChunked(
+    file: File,
+    folderId: number,
+    captionConfig?: any,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ queued_items: UploadQueueStatus[]; count: number }>> {
+    const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+
+    // Init
+    const initRes = await this.initChunkUpload(folderId, file.name, totalChunks, captionConfig)
+    if (!initRes.success || !initRes.data?.upload_id) {
+      throw new Error(initRes.message || 'Failed to initialize upload')
+    }
+    const uploadId = initRes.data.upload_id
+
+    // Upload chunks
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE
+      const end = Math.min(start + CHUNK_SIZE, file.size)
+      const chunk = file.slice(start, end)
+
+      await this.uploadChunk(uploadId, i, chunk)
+
+      if (onProgress) {
+        // Calculate progress based on chunks completed
+        const percent = Math.round(((i + 1) / totalChunks) * 100)
+        onProgress(percent)
+      }
+    }
+
+    // Finish
+    return this.finishChunkUpload(uploadId)
+  },
+
   async listUploads(params?: MediaUploadListParams): Promise<ApiResponse<MediaUpload[]>> {
     return apiClient.get('/v1/customer/media-upload/uploads', { params })
   },
@@ -262,7 +334,7 @@ export const mediaUploadService = {
   },
 
   async getQueueStatus(id: number): Promise<ApiResponse<UploadQueueStatus>> {
-    return apiClient.get(`/v1/customer/media-upload/queue/${id}`)
+    return apiClient.get(`/v1/customer/media-upload/queue/${id}`, { skipToast: true })
   },
 
   async listQueue(params?: {
