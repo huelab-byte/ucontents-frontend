@@ -128,6 +128,7 @@ export default function AiIntegrationPage() {
     rate_limit_per_minute: "",
     rate_limit_per_day: "",
     scopes: [] as string[],
+    model: "",
   })
   const [showApiKey, setShowApiKey] = React.useState(false)
   const [selectedProvider, setSelectedProvider] = React.useState<AiProvider | null>(null)
@@ -287,7 +288,10 @@ export default function AiIntegrationPage() {
         rate_limit_per_minute: formData.rate_limit_per_minute ? parseInt(formData.rate_limit_per_minute) : undefined,
         rate_limit_per_day: formData.rate_limit_per_day ? parseInt(formData.rate_limit_per_day) : undefined,
         scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
-        metadata: isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : undefined,
+        metadata: {
+          ...(isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : {}),
+          ...(selectedProvider?.slug === 'google' && formData.model ? { model: formData.model } : {})
+        },
       })
       if (response.success && response.data) {
         setApiKeys((prev) => [response.data!, ...prev])
@@ -318,7 +322,11 @@ export default function AiIntegrationPage() {
         rate_limit_per_minute: formData.rate_limit_per_minute ? parseInt(formData.rate_limit_per_minute) : undefined,
         rate_limit_per_day: formData.rate_limit_per_day ? parseInt(formData.rate_limit_per_day) : undefined,
         scopes: formData.scopes,
-        metadata: isAzure ? { ...existingMeta, deployment_name: formData.deployment_name || undefined } : undefined,
+        metadata: {
+          ...existingMeta,
+          ...(isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : {}),
+          ...(selectedProvider?.slug === 'google' && formData.model ? { model: formData.model } : {})
+        },
       })
       if (response.success && response.data) {
         setApiKeys((prev) => prev.map((k) => k.id === selectedApiKey.id ? response.data! : k))
@@ -412,6 +420,7 @@ export default function AiIntegrationPage() {
       rate_limit_per_minute: "",
       rate_limit_per_day: "",
       scopes: [],
+      model: "",
     })
     setShowApiKey(false)
   }
@@ -481,6 +490,7 @@ export default function AiIntegrationPage() {
       rate_limit_per_minute: apiKey.rate_limit_per_minute?.toString() || "",
       rate_limit_per_day: apiKey.rate_limit_per_day?.toString() || "",
       scopes: apiKey.scopes || [],
+      model: (metadata as any)?.model || "",
     })
     setEditDialogOpen(true)
   }
@@ -1105,6 +1115,33 @@ export default function AiIntegrationPage() {
                       </FieldContent>
                     </Field>
 
+                    {selectedProvider?.slug === 'google' && (
+                      <Field>
+                        <FieldLabel>Model Version <span className="font-normal text-muted-foreground">(Optional)</span></FieldLabel>
+                        <FieldContent>
+                          <Select
+                            value={formData.model}
+                            onValueChange={(value) => setFormData({ ...formData, model: value || "" })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a model" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                              <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                              <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                              <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</SelectItem>
+                              <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</SelectItem>
+                              <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Select the specific Gemini model version to use.
+                          </p>
+                        </FieldContent>
+                      </Field>
+                    )}
+
                     {selectedProvider && (
                       <div className="p-3 bg-muted rounded-lg">
                         <p className="text-sm font-medium mb-1">{selectedProvider.name}</p>
@@ -1444,6 +1481,33 @@ export default function AiIntegrationPage() {
                         </Select>
                       </FieldContent>
                     </Field>
+
+                    {selectedProvider?.slug === 'google' && (
+                      <Field>
+                        <FieldLabel>Model Version <span className="font-normal text-muted-foreground">(Optional)</span></FieldLabel>
+                        <FieldContent>
+                          <Select
+                            value={formData.model}
+                            onValueChange={(value) => setFormData({ ...formData, model: value || "" })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a model" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                              <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                              <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                              <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</SelectItem>
+                              <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</SelectItem>
+                              <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Select the specific Gemini model version to use.
+                          </p>
+                        </FieldContent>
+                      </Field>
+                    )}
 
                     <Field>
                       <FieldLabel>Name</FieldLabel>

@@ -115,6 +115,7 @@ export default function CustomerAiSettingsPage() {
         is_active: true,
         priority: 0,
         scopes: [] as string[],
+        model: "",
     })
 
     const selectedProvider = React.useMemo(
@@ -181,6 +182,7 @@ export default function CustomerAiSettingsPage() {
             is_active: true,
             priority: 0,
             scopes: [],
+            model: "",
         })
         setTestResult(null)
     }
@@ -200,7 +202,10 @@ export default function CustomerAiSettingsPage() {
                 is_active: formData.is_active,
                 priority: formData.priority,
                 scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
-                metadata: isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : undefined,
+                metadata: {
+                    ...(isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : {}),
+                    ...(selectedProvider?.slug === "google" && formData.model ? { model: formData.model } : {})
+                },
             })
             if (res.success) {
                 toast.success("API Key added successfully")
@@ -228,7 +233,11 @@ export default function CustomerAiSettingsPage() {
                 is_active: formData.is_active,
                 priority: formData.priority,
                 scopes: formData.scopes.length > 0 ? formData.scopes : undefined,
-                metadata: isAzure ? { ...existingMeta, deployment_name: formData.deployment_name || undefined } : undefined,
+                metadata: {
+                    ...existingMeta,
+                    ...(isAzure && formData.deployment_name ? { deployment_name: formData.deployment_name } : {}),
+                    ...(selectedApiKey.provider?.slug === "google" && formData.model ? { model: formData.model } : {})
+                },
             })
             if (res.success) {
                 toast.success("API Key updated successfully")
@@ -303,6 +312,7 @@ export default function CustomerAiSettingsPage() {
             is_active: key.is_active,
             priority: key.priority,
             scopes: [],
+            model: "",
         })
         customerAiKeyService.get(key.id).then((res) => {
             if (res.success && res.data) {
@@ -314,6 +324,7 @@ export default function CustomerAiSettingsPage() {
                     project_id: d.project_id ?? prev.project_id,
                     scopes: d.scopes ?? prev.scopes,
                     deployment_name: d.metadata?.deployment_name ?? prev.deployment_name,
+                    model: (d.metadata as any)?.model ?? prev.model,
                 }))
             }
         })
@@ -550,6 +561,31 @@ export default function CustomerAiSettingsPage() {
                                 </div>
                             )}
 
+                            {selectedProvider?.slug === "google" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="model">Model Version <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                    <Select
+                                        value={formData.model}
+                                        onValueChange={(value) => setFormData({ ...formData, model: value || "" })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a model" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                                            <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                                            <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                                            <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</SelectItem>
+                                            <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</SelectItem>
+                                            <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        Select the specific Gemini model version to use.
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Optional fields based on provider */}
                             <div className="space-y-2">
                                 <Label>Scopes (Optional)</Label>
@@ -657,6 +693,31 @@ export default function CustomerAiSettingsPage() {
                                         onChange={e => setFormData({ ...formData, api_secret: e.target.value })}
                                         placeholder="Optional"
                                     />
+                                </div>
+                            )}
+
+                            {selectedApiKey?.provider?.slug === "google" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="edit-model">Model Version <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                    <Select
+                                        value={formData.model}
+                                        onValueChange={(value) => setFormData({ ...formData, model: value || "" })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a model" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                                            <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                                            <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                                            <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</SelectItem>
+                                            <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</SelectItem>
+                                            <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        Select the specific Gemini model version to use.
+                                    </p>
                                 </div>
                             )}
 
